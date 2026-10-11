@@ -1,7 +1,7 @@
 /**
- * HISAPP — FIREBASE WEB APP & FIRESTORE CONFIGURATION (PROJECT: hishapp1)
+ * HISHAPP — FIREBASE WEB APP & FIRESTORE CONFIGURATION (PROJECT: hishapp1)
  * ─────────────────────────────────────────────────────────────────
- * Central Cloud Firestore database configuration for Hisapp.
+ * Central Cloud Firestore database configuration for HishApp.
  * Hosted at: https://hishapp1.web.app/
  * Developer / Project: hishapp1 (mbr.uhq@gmail.com)
  *

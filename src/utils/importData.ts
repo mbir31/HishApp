@@ -109,7 +109,7 @@ export function parseJSONBackup(text: string, source = 'JSON backup'): ImportRes
   }
 
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
-    throw new Error('The selected JSON file is not a Hisapp backup.');
+    throw new Error('The selected JSON file is not a HishApp backup.');
   }
 
   const rawEntries: any[] = Array.isArray(payload.patientEntries) ? payload.patientEntries : [];
@@ -269,7 +269,7 @@ export function parseCSVFiles(files: { name: string; text: string }[]): ImportRe
       sources.push(file.name);
     } else {
       throw new Error(
-        `"${file.name}" is not a Hisapp CSV export (unrecognized header: "${headers[0] || ''}").`
+        `"${file.name}" is not a HishApp CSV export (unrecognized header: "${headers[0] || ''}").`
       );
     }
   }

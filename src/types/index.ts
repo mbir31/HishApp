@@ -60,7 +60,7 @@ export interface ClinicSettings {
   doctorPhoto?: string;
   /**
    * Firebase uid of the Google account this doctor identity was filled from.
-   * Empty until the user signs in with their own Gmail — Hisapp never
+   * Empty until the user signs in with their own Gmail — HishApp never
    * pre-populates a doctor / account identity.
    */
   ownerUid?: string | null;
@@ -81,7 +81,7 @@ export interface ClinicSettings {
   /** Timestamp of the last successful in-place update of the Drive "latest" backup. */
   lastDriveSyncAt?: number | null;
   driveFolderId?: string | null;
-  /** Drive file id of the always-current `Hisapp_Latest.json` backup (updated in place). */
+  /** Drive file id of the always-current `HishApp_Latest.json` backup (updated in place). */
   driveLatestFileId?: string | null;
   ledgerSpreadsheetId?: string | null;
   procedures?: string[];

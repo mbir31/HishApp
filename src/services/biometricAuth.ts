@@ -83,7 +83,7 @@ export function getLastBiometricPhone(): string | null {
 export async function registerBiometric(phone: string): Promise<boolean> {
   const supported = await isBiometricAvailable();
   if (!supported) {
-    throw new Error('এই ডিভাইসে বায়োমেট্রিক (ফিঙ্গারপ্রিন্ট/ফেস আনলক) সাপোর্ট পাওয়া যায়নি।');
+    throw new Error('Biometric authentication (fingerprint/face unlock) is not supported on this device.');
   }
 
   const challenge = new Uint8Array(32);
@@ -95,13 +95,13 @@ export async function registerBiometric(phone: string): Promise<boolean> {
       publicKey: {
         challenge,
         rp: {
-          name: 'Hisapp Dental Clinic Vault',
+          name: 'HishApp Dental Clinic Vault',
           id: window.location.hostname === 'localhost' ? 'localhost' : window.location.hostname,
         },
         user: {
           id: userId,
           name: phone,
-          displayName: `Hisapp Vault (${phone})`,
+          displayName: `HishApp Vault (${phone})`,
         },
         pubKeyCredParams: [
           { type: 'public-key', alg: -7 }, // ES256
@@ -116,7 +116,7 @@ export async function registerBiometric(phone: string): Promise<boolean> {
     })) as PublicKeyCredential | null;
 
     if (!credential) {
-      throw new Error('বায়োমেট্রিক সেটআপ সম্পন্ন হয়নি।');
+      throw new Error('Biometric registration was not completed.');
     }
 
     const credentialIdBase64 = bufferToBase64(credential.rawId);
@@ -132,9 +132,9 @@ export async function registerBiometric(phone: string): Promise<boolean> {
     return true;
   } catch (err: any) {
     if (err?.name === 'NotAllowedError') {
-      throw new Error('বায়োমেট্রিক অ্যাক্সেস বাতিল করা হয়েছে বা সময় পার হয়ে গেছে।');
+      throw new Error('Biometric setup was cancelled or timed out.');
     }
-    throw new Error(err?.message || 'বায়োমেট্রিক সেটআপ ব্যর্থ হয়েছে।');
+    throw new Error(err?.message || 'Biometric registration failed.');
   }
 }
 
@@ -144,7 +144,7 @@ export async function registerBiometric(phone: string): Promise<boolean> {
 export async function verifyBiometric(phone: string): Promise<boolean> {
   const enrollmentRaw = localStorage.getItem(`${BIO_PREFIX}${phone}`);
   if (!enrollmentRaw) {
-    throw new Error('এই নম্বরের জন্য বায়োমেট্রিক সক্রিয় করা নেই। আগে পিন দিয়ে লগইন করে বায়োমেট্রিক চালু করুন।');
+    throw new Error('Biometrics not enabled for this number. Please sign in with your PIN first.');
   }
 
   const enrollment = JSON.parse(enrollmentRaw);
@@ -170,9 +170,9 @@ export async function verifyBiometric(phone: string): Promise<boolean> {
     return !!assertion;
   } catch (err: any) {
     if (err?.name === 'NotAllowedError') {
-      throw new Error('বায়োমেট্রিক ভেরিফিকেশন বাতিল হয়েছে।');
+      throw new Error('Biometric verification cancelled.');
     }
-    throw new Error(err?.message || 'বায়োমেট্রিক ভেরিফিকেশন ব্যর্থ হয়েছে।');
+    throw new Error(err?.message || 'Biometric verification failed.');
   }
 }
 
@@ -182,7 +182,7 @@ export async function verifyBiometric(phone: string): Promise<boolean> {
 export async function loginWithBiometric(phone: string): Promise<VaultSession> {
   const verified = await verifyBiometric(phone);
   if (!verified) {
-    throw new Error('বায়োমেট্রিক যাচাই ব্যর্থ হয়েছে।');
+    throw new Error('Biometric verification failed.');
   }
 
   const db = getFirestoreDb();
@@ -190,7 +190,7 @@ export async function loginWithBiometric(phone: string): Promise<VaultSession> {
   const snapshot = await getDoc(vaultRef);
 
   if (!snapshot.exists()) {
-    throw new Error('ক্লাউড ভল্ট পাওয়া যায়নি। অনুগ্রহ করে প্রথমে একবার ৪-ডিজিট পিন দিয়ে ভল্ট তৈরি করুন।');
+    throw new Error('Cloud vault not found. Please log in with your 4-digit PIN first.');
   }
 
   const data = snapshot.data() as VaultMetadata;
@@ -218,12 +218,12 @@ export async function loginWithBiometric(phone: string): Promise<VaultSession> {
 export async function resetPinWithBiometric(phone: string, newPin: string): Promise<void> {
   const cleanPin = (newPin || '').trim();
   if (!isValidPin(cleanPin)) {
-    throw new Error('নতুন পিন অবশ্যই ৪ ডিজিটের হতে হবে (New PIN must be 4 digits).');
+    throw new Error('New PIN must be exactly 4 digits.');
   }
 
   const verified = await verifyBiometric(phone);
   if (!verified) {
-    throw new Error('বায়োমেট্রিক যাচাই বাতিল হয়েছে।');
+    throw new Error('Biometric verification cancelled.');
   }
 
   const db = getFirestoreDb();
@@ -231,7 +231,7 @@ export async function resetPinWithBiometric(phone: string, newPin: string): Prom
   const snapshot = await getDoc(vaultRef);
 
   if (!snapshot.exists()) {
-    throw new Error('ক্লাউড ভল্ট পাওয়া যায়নি।');
+    throw new Error('Cloud vault not found.');
   }
 
   const newSalt = generateSalt();

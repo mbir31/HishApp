@@ -1,9 +1,9 @@
 /**
- * HISAPP — DUAL-STORE LOCAL REDUNDANCY & FAIL-SAFE BACKUP
+ * HISHAPP — DUAL-STORE LOCAL REDUNDANCY & FAIL-SAFE BACKUP
  * ─────────────────────────────────────────────────────────────────
  * Implements architectural dual-store redundancy:
- *   1. Primary Storage: HisappLedger_<phone> (Main IndexedDB)
- *   2. Secondary Mirror: HisappSafetyMirror (Independent Shadow IndexedDB)
+ *   1. Primary Storage: HishAppLedger_<phone> (Main IndexedDB)
+ *   2. Secondary Mirror: HishAppSafetyMirror (Independent Shadow IndexedDB)
  *   3. Tertiary Storage: localStorage Emergency JSON Snapshot
  *
  * Guarantees zero data-loss even in cases of database table corruption
@@ -18,8 +18,9 @@ import {
 } from '../db/indexedDB';
 import type { AuditLogEntry, PatientEntry, PatientProfile, Settlement } from '../types';
 
-const EMERGENCY_BACKUP_KEY = 'hisapp_emergency_fail_safe_snapshot';
-const MIRROR_DB_NAME = 'HisappSafetyMirror';
+const EMERGENCY_BACKUP_KEY = 'hishapp_emergency_fail_safe_snapshot';
+const LEGACY_EMERGENCY_BACKUP_KEY = 'hisapp_emergency_fail_safe_snapshot';
+const MIRROR_DB_NAME = 'HishAppSafetyMirror';
 const MIRROR_DB_VERSION = 1;
 
 export interface EmergencySnapshotMeta {
@@ -210,7 +211,7 @@ export async function inspectDualStoreHealth(): Promise<DualStoreHealth> {
 export function getEmergencySnapshotMeta(): EmergencySnapshotMeta | null {
   if (typeof localStorage === 'undefined') return null;
   try {
-    const raw = localStorage.getItem(EMERGENCY_BACKUP_KEY);
+    const raw = localStorage.getItem(EMERGENCY_BACKUP_KEY) || localStorage.getItem(LEGACY_EMERGENCY_BACKUP_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     return {

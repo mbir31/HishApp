@@ -80,7 +80,7 @@ export function buildSettlementStatement(
   options: BuildStatementOptions = {}
 ): SettlementStatement {
   const currency = options.currencySymbol ?? (settings.currencySymbol || '৳');
-  const includeBangla = options.includeBangla ?? true;
+  const includeBangla = options.includeBangla ?? false;
   const sharePercent = settings.sharePercentage || 40;
   const clinicName = (settings.clinicName || '').trim() || FALLBACK_CLINIC_NAME;
   const doctorName = (settings.doctorName || '').trim() || '—';
@@ -138,13 +138,13 @@ export function buildSettlementStatement(
     `of ${sharePercent}% of the collected bill amounts to ${fmt(periodShare)}. Against the total ` +
     `payable amount of ${fmt(totalPayable)}, ${fmt(amountReceived)} has been received from the ` +
     `clinic, ${settlementWording}. This statement is generated electronically from the clinical ` +
-    `ledger maintained in Hisapp and is issued without manual alteration.`;
+    `ledger maintained in HishApp and is issued without manual alteration.`;
 
   const statementBangla =
     `উপরের বিবরণীটি ${clinicName}-এ চিকিৎসাকালীন ${readableDate(settlement.periodFrom)} থেকে ` +
     `${readableDate(settlement.periodTo)} পর্যন্ত ${patientCount} জন রোগীর চিকিৎসার ভিত্তিতে প্রস্তুত করা হয়েছে। ` +
     `চুক্তি অনুযায়ী ${sharePercent}% হিস্যা অনুসারে ডাক্তারের প্রাপ্য ${fmt(totalPayable)}, যার মধ্যে ` +
-    `${fmt(amountReceived)} পরিশোধ করা হয়েছে। এই বিবরণী Hisapp অ্যাপের লেজার থেকে স্বয়ংক্রিয়ভাবে তৈরি।`;
+    `${fmt(amountReceived)} পরিশোধ করা হয়েছে। এই বিবরণী HishApp অ্যাপের লেজার থেকে স্বয়ংক্রিয়ভাবে তৈরি।`;
 
   return {
     documentTitle: 'CLINICAL SETTLEMENT STATEMENT',
@@ -184,12 +184,12 @@ export function buildSettlementStatement(
       hour: '2-digit',
       minute: '2-digit',
     }),
-    footer: 'Generated electronically by Hisapp · hishapp1.web.app',
+    footer: 'Generated electronically by HishApp · hishapp1.web.app',
   };
 }
 
-/** File name used for the exported image, e.g. `Hisapp_Settlement_ST-20261010-01.jpg`. */
+/** File name used for the exported image, e.g. `HishApp_Settlement_ST-20261010-01.jpg`. */
 export function settlementImageFileName(settlement: Settlement): string {
   const reference = (settlement.settlementId || 'settlement').replace(/[^A-Za-z0-9-_]+/g, '_');
-  return `Hisapp_Settlement_${reference}.jpg`;
+  return `HishApp_Settlement_${reference}.jpg`;
 }

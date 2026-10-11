@@ -124,7 +124,7 @@ export function exportMonthlySummaryPDF(data: MonthlySummaryData, settings: Clin
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(199, 210, 254); // Light indigo
-  // Hisapp ships with no pre-loaded account: only print a doctor line once
+  // HishApp ships with no pre-loaded account: only print a doctor line once
   // the surgeon has signed in with Google (or typed a name in Settings).
   if (settings.doctorName && settings.doctorName.trim()) {
     doc.text(`Doctor: ${settings.doctorName.trim()}`, 36, 56);
@@ -345,7 +345,7 @@ export function exportMonthlySummaryPDF(data: MonthlySummaryData, settings: Clin
   doc.setFontSize(7);
   doc.setTextColor(148, 163, 184);
   doc.text(
-    'This statement is generated electronically by Hisapp - Dental Clinic Income & Settlement Tracker. Page certified.',
+    'This statement is generated electronically by HishApp - Dental Clinic Income & Settlement Tracker. Page certified.',
     pageWidth / 2,
     doc.internal.pageSize.getHeight() - 20,
     { align: 'center' }

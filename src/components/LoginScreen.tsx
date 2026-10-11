@@ -95,13 +95,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     const targetPin = pin.trim();
 
     if (!isValidPhoneNumber(targetPhone)) {
-      setError('অনুগ্রহ করে সঠিক ১১ ডিজিটের মোবাইল নম্বর দিন (01XXXXXXXXX)।');
+      setError('Please enter a valid 11-digit mobile number (01XXXXXXXXX).');
       phoneInputRef.current?.focus();
       return;
     }
 
     if (!isValidPin(targetPin)) {
-      setError('অনুগ্রহ করে ৪ ডিজিটের গোপন PIN দিন।');
+      setError('Please enter your 4-digit secret PIN.');
       pinInputRef.current?.focus();
       return;
     }
@@ -113,7 +113,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       recordUnlockSuccess(targetPhone, rememberUser);
       onUnlock(session);
     } catch (err: any) {
-      setError(err?.message || 'লগইন ব্যর্থ হয়েছে। পিন ও মোবাইল নম্বর যাচাই করুন।');
+      setError(err?.message || 'Login failed. Please verify your mobile number and PIN.');
     } finally {
       setIsLoading(false);
     }
@@ -123,7 +123,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const handleBiometricClick = async () => {
     const targetPhone = cleanPhoneNumber(rememberedPhone || phone);
     if (!targetPhone) {
-      setError('বায়োমেট্রিক ব্যবহারের জন্য প্রথমে মোবাইল নম্বর প্রয়োজন।');
+      setError('Mobile number is required before using biometrics.');
       return;
     }
 
@@ -134,7 +134,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       recordUnlockSuccess(targetPhone, true);
       onUnlock(session);
     } catch (err: any) {
-      setError(err?.message || 'বায়োমেট্রিক আনলক ব্যর্থ হয়েছে। গোপন পিন ব্যবহার করুন।');
+      setError(err?.message || 'Biometric unlock failed. Please use your secret PIN.');
     } finally {
       setIsLoading(false);
     }
@@ -165,14 +165,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           <div className="relative w-16 h-16 rounded-2xl p-0.5 bg-gradient-to-tr from-indigo-500 via-sky-500 to-emerald-400 shadow-lg shadow-indigo-500/20 flex items-center justify-center">
             <img
               src="/applogo.png"
-              alt="Hisapp Logo"
+              alt="HishApp Logo"
               className="w-full h-full rounded-[14px] object-contain bg-white p-1"
             />
           </div>
 
           <div>
             <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
-              Hisapp · হিসাব
+              HishApp
             </h1>
             <p className="text-xs text-slate-500 font-medium mt-0.5">
               Dental Clinic Income &amp; Settlement Vault
@@ -189,7 +189,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         <div className="pt-4 pb-2">
           <PWAInstallButton
             variant="primary"
-            label="১-ক্লিকে অ্যাপ ইনস্টল করুন (Install App)"
+            label="1-Click Install App"
             className="w-full justify-center py-2.5"
           />
         </div>
@@ -214,7 +214,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   </div>
                   <div>
                     <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">
-                      লগইনকৃত ডাক্তার / ভল্ট আইডি
+                      Logged-in Doctor / Vault ID
                     </div>
                     <div className="text-sm font-extrabold text-slate-800 font-mono tracking-wide">
                       {rememberedPhone}
@@ -226,10 +226,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   type="button"
                   onClick={handleSwitchUser}
                   className="text-[11px] font-semibold text-slate-500 hover:text-indigo-600 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-white/80 transition"
-                  title="অন্য নম্বর দিয়ে লগইন করুন"
+                  title="Switch to another number"
                 >
                   <RotateCcw className="w-3 h-3" />
-                  <span>পরিবর্তন</span>
+                  <span>Switch</span>
                 </button>
               </div>
 
@@ -238,10 +238,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
                   <span className="flex items-center gap-1">
                     <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>৪-ডিজিটের গোপন PIN দিন</span>
+                    <span>Enter 4-Digit Secret PIN</span>
                   </span>
                   <span className="text-[10px] text-slate-400 font-normal">
-                    আজকের জন্য আনলক করুন
+                    Unlock for Today
                   </span>
                 </label>
 
@@ -278,11 +278,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   className="w-full py-3 px-4 rounded-xl font-bold text-xs sm:text-sm text-white shadow-md shadow-indigo-500/25 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition active:scale-[0.98]"
                 >
                   {isLoading ? (
-                    <span>ভেরিফাই হচ্ছে...</span>
+                    <span>Verifying...</span>
                   ) : (
                     <>
                       <Lock className="w-4 h-4" />
-                      <span>PIN দিয়ে আনলক করুন</span>
+                      <span>Unlock with PIN</span>
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
@@ -297,7 +297,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                     className="w-full py-2.5 px-4 rounded-xl font-bold text-xs text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 shadow-xs flex items-center justify-center gap-2 transition active:scale-[0.98]"
                   >
                     <Fingerprint className="w-4 h-4 text-indigo-600" />
-                    <span>বায়োমেট্রিক / ফিঙ্গারপ্রিন্ট দিয়ে আনলক</span>
+                    <span>Unlock with Biometrics / Fingerprint</span>
                   </button>
                 )}
               </div>
@@ -309,7 +309,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
                   <Phone className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>১১ ডিজিটের মোবাইল নম্বর</span>
+                  <span>11-Digit Mobile Number</span>
                 </label>
                 <div className="relative glow-field">
                   <input
@@ -326,7 +326,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   />
                 </div>
                 <p className="text-[10px] text-slate-400">
-                  বাংলাদেশি ১১ ডিজিটের নম্বর (যেমন: 01712345678)
+                  Standard 11-digit mobile number (e.g. 01712345678)
                 </p>
               </div>
 
@@ -335,11 +335,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
                   <span className="flex items-center gap-1">
                     <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>গোপন PIN (৪ ডিজিট)</span>
+                    <span>Secret PIN (4 Digits)</span>
                   </span>
                   <span className="text-[10px] text-indigo-600 font-medium flex items-center gap-0.5">
                     <Sparkles className="w-2.5 h-2.5" />
-                    <span>প্রথমবার হলে যে কোনো ৪ ডিজিট</span>
+                    <span>Any 4 digits on first login</span>
                   </span>
                 </label>
                 <div className="relative glow-field">
@@ -377,11 +377,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                     className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 cursor-pointer"
                   />
                   <span className="text-xs text-slate-700 font-medium">
-                    এই ডিভাইসে মোবাইল নম্বর মনে রাখুন (Remember User ID)
+                    Remember Mobile Number / User ID on this device
                   </span>
                 </label>
                 <p className="text-[10px] text-slate-400 ml-6 mt-0.5">
-                  মনে রাখলে পরবর্তী সময়ে শুধু ৪-ডিজিট পিন বা বায়োমেট্রিক দিয়ে দ্রুত লগইন করা যাবে।
+                  When saved, you only need to enter your PIN or use biometrics for quick access.
                 </p>
               </div>
 
@@ -392,11 +392,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 className="w-full mt-2 py-3 px-4 rounded-xl font-bold text-xs sm:text-sm text-white shadow-md shadow-indigo-500/25 bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-700 hover:to-sky-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition active:scale-[0.98]"
               >
                 {isLoading ? (
-                  <span>ভল্ট প্রস্তুত হচ্ছে...</span>
+                  <span>Preparing Vault...</span>
                 ) : (
                   <>
                     <Lock className="w-4 h-4" />
-                    <span>লগইন করুন (Access Vault)</span>
+                    <span>Sign In (Access Vault)</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -409,7 +409,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                     onClick={() => setIsRememberedMode(true)}
                     className="text-xs text-indigo-600 font-semibold hover:underline"
                   >
-                    পূর্বে সংরক্ষিত নম্বরে ({rememberedPhone}) ফিরে যান
+                    Back to saved number ({rememberedPhone})
                   </button>
                 </div>
               )}
@@ -421,10 +421,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         <div className="mt-6 pt-4 border-t border-slate-150/70 text-center space-y-1.5">
           <p className="text-[11px] text-slate-500 font-medium flex items-center justify-center gap-1">
             <Sparkles className="w-3 h-3 text-amber-500" />
-            <span>এক দিনে পিন/বায়োমেট্রিক দিয়ে ১ বার আনলক করলেই সারাদিন সচল থাকবে।</span>
+            <span>Unlock once per day with PIN or biometrics for all-day access.</span>
           </p>
           <p className="text-[10px] text-slate-400">
-            লগআউট না করলে সারাদিন কোনো পিন ছাড়াই অনায়াসে অ্যাপে কাজ করা যাবে।
+            Unless you log out, no PIN or credentials will be required for the rest of the day.
           </p>
         </div>
       </div>

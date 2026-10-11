@@ -1,5 +1,5 @@
 /**
- * HISAPP — APP ACCESS LOCK & DAILY UNLOCK SERVICE
+ * HISHAPP — APP ACCESS LOCK & DAILY UNLOCK SERVICE
  * ─────────────────────────────────────────────────────────────────
  * Enforces security & seamless clinic workflow access rules:
  *

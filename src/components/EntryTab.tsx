@@ -644,6 +644,8 @@ export const EntryTab: React.FC<EntryTabProps> = ({
             </span>
             <input
               type="number"
+              inputMode="numeric"
+              pattern="[0-9]*"
               placeholder="0"
               value={receivedAmount}
               onChange={(e) => setReceivedAmount(e.target.value)}

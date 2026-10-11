@@ -420,9 +420,9 @@ export async function getAvailableCloudSnapshots(phoneNumber: string): Promise<C
   const db = getFirestoreDb();
   const keys: Array<'latest' | 'yesterday' | 'last_week'> = ['latest', 'yesterday', 'last_week'];
   const labels: Record<'latest' | 'yesterday' | 'last_week', string> = {
-    latest: 'সর্বশেষ ক্লাউড স্ন্যাপশট (Latest Live)',
-    yesterday: 'গতকালকের ব্যাকআপ (Yesterday)',
-    last_week: 'গত সপ্তাহের ব্যাকআপ (7 Days Ago)',
+    latest: 'Latest Live Cloud Snapshot',
+    yesterday: 'Yesterday Backup',
+    last_week: 'Last Week Backup (7 Days Ago)',
   };
 
   const results: CloudSnapshotInfo[] = [];
@@ -478,7 +478,7 @@ export async function restoreFromSpecificSnapshot(
   const snap = await getDoc(snapshotRef);
 
   if (!snap.exists()) {
-    throw new Error(`ক্লাউড স্ন্যাপশট (${snapshotKey}) পাওয়া যায়নি (Snapshot not found).`);
+    throw new Error(`Cloud snapshot (${snapshotKey}) not found.`);
   }
 
   const data = snap.data() as {
@@ -604,7 +604,7 @@ export async function reconcileVaultRecords(phoneNumber: string): Promise<Reconc
     checkedAt: Date.now(),
     message:
       healedCount > 0
-        ? `${healedCount}টি ডাটা অমিল সফলভাবে অটো-হিল (Auto-Healed) করা হয়েছে। এখন লোকাল ও ক্লাউড ডাটা ১০০% প্যারালাল।`
-        : 'লোকাল ডিভাইস এবং ক্লাউড ভল্ট ১০০% নিখুঁত ও সমান্তরাল অবস্থায় রয়েছে (Zero Desync)।',
+        ? `Successfully auto-healed ${healedCount} record discrepancies. Local and cloud data are now 100% in sync.`
+        : 'Local device and Cloud Vault are in 100% perfect parity (Zero Desync).',
   };
 }

@@ -1,7 +1,7 @@
 /**
- * HISAPP — SECURED CLOUD DATA VAULT AUTHENTICATION
+ * HISHAPP — SECURED CLOUD DATA VAULT AUTHENTICATION
  * ─────────────────────────────────────────────────────────────────
- * Central Cloud Firestore authentication for Hisapp.
+ * Central Cloud Firestore authentication for HishApp.
  * Users authenticate with:
  *   - 11-digit mobile number (e.g., 01XXXXXXXXX)
  *   - 4-digit secret PIN (e.g., 1234)
@@ -93,12 +93,12 @@ export async function loginOrCreateVault(
 
   const phone = cleanPhoneNumber(rawPhone);
   if (!isValidPhoneNumber(phone)) {
-    throw new Error('অনুগ্রহ করে সঠিক ১১ ডিজিটের মোবাইল নম্বর দিন (Please enter a valid 11-digit mobile number).');
+    throw new Error('Please enter a valid 11-digit mobile number.');
   }
 
   const pin = (rawPin || '').trim();
   if (!isValidPin(pin)) {
-    throw new Error('অনুগ্রহ করে ৪ ডিজিটের গোপন PIN দিন (PIN must be exactly 4 digits).');
+    throw new Error('PIN must be exactly 4 digits.');
   }
 
   const db = getFirestoreDb();
@@ -138,7 +138,7 @@ export async function loginOrCreateVault(
   const candidateHash = await hashPin(pin, data.salt);
 
   if (candidateHash !== data.pinHash) {
-    throw new Error('ভুল পিন নম্বর (Incorrect PIN)। অনুগ্রহ করে আপনার সঠিক ৪ ডিজিটের গোপন PIN দিন।');
+    throw new Error('Incorrect PIN. Please enter your valid 4-digit secret PIN.');
   }
 
   // Update last login timestamp in Firestore
@@ -173,7 +173,7 @@ export async function changeVaultPin(
 
   const newPin = (rawNewPin || '').trim();
   if (!isValidPin(newPin)) {
-    throw new Error('নতুন পিন অবশ্যই ৪ ডিজিটের হতে হবে (New PIN must be exactly 4 digits).');
+    throw new Error('New PIN must be exactly 4 digits.');
   }
 
   const db = getFirestoreDb();
@@ -181,14 +181,14 @@ export async function changeVaultPin(
   const snapshot = await getDoc(vaultRef);
 
   if (!snapshot.exists()) {
-    throw new Error('ক্লাউড ভল্ট পাওয়া যায়নি (Vault not found).');
+    throw new Error('Vault not found.');
   }
 
   const data = snapshot.data() as VaultMetadata;
   const oldHash = await hashPin((rawOldPin || '').trim(), data.salt);
 
   if (oldHash !== data.pinHash) {
-    throw new Error('বর্তমান পিন নম্বর সঠিক নয় (Current PIN is incorrect).');
+    throw new Error('Current PIN is incorrect.');
   }
 
   // Generate new salt and new hash

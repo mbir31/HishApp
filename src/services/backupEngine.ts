@@ -1,7 +1,7 @@
 /**
- * HISAPP — CLOUD DATA VAULT BACKUP & SYNC ENGINE (HARDENED & FAIL-SAFE)
+ * HISHAPP — CLOUD DATA VAULT BACKUP & SYNC ENGINE (HARDENED & FAIL-SAFE)
  * ─────────────────────────────────────────────────────────────────
- * Central Cloud Firestore sync engine for Hisapp.
+ * Central Cloud Firestore sync engine for HishApp.
  *
  * Each clinic / doctor uses an 11-digit mobile number and secret 4-digit PIN
  * to unlock and synchronize their private data vault.
@@ -391,7 +391,7 @@ class BackupEngine {
    */
   async changePin(oldPin: string, newPin: string): Promise<void> {
     if (!this.user) {
-      throw new Error('দয়া করে প্রথমে লগইন করুন (Please log in first).');
+      throw new Error('Please log in first.');
     }
     await changeVaultPin(this.user.phoneNumber, oldPin, newPin);
   }
@@ -437,10 +437,10 @@ class BackupEngine {
    */
   async backupNow(): Promise<void> {
     if (!this.user) {
-      throw new Error('অনুগ্রহ করে ক্লাউড ভল্টে লগইন করুন (Please log into your vault).');
+      throw new Error('Please log into your vault.');
     }
     if (!this.syncSession) {
-      throw new Error('সিঙ্ক সেশন সক্রিয় নয় (Sync session not active).');
+      throw new Error('Sync session not active.');
     }
 
     this.phase = 'syncing';
@@ -465,7 +465,7 @@ class BackupEngine {
    */
   async reconcileVault(): Promise<ReconciliationResult> {
     if (!this.user) {
-      throw new Error('অনুগ্রহ করে প্রথমে ক্লাউড ভল্টে লগইন করুন (Please log into your vault first).');
+      throw new Error('Please log into your vault first.');
     }
     this.phase = 'syncing';
     this.emit();

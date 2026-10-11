@@ -115,9 +115,9 @@ test('a settlement exports as a downloadable JPG statement', async () => {
 
   const result = await exportSettlementAsImage(settlement, settings);
 
-  assert.equal(result.fileName, 'Hisapp_Settlement_ST-20261010-02.jpg');
+  assert.equal(result.fileName, 'HishApp_Settlement_ST-20261010-02.jpg');
   assert.equal(result.outcome, 'downloaded');
-  assert.deepEqual(downloads, ['Hisapp_Settlement_ST-20261010-02.jpg']);
+  assert.deepEqual(downloads, ['HishApp_Settlement_ST-20261010-02.jpg']);
 
   // Three canvases: the font-support probe, one for measuring text, and the
   // rendered image at 2× (the last one created).
@@ -160,7 +160,7 @@ test('phones with a share sheet get the image there instead of a download', asyn
   assert.equal(result.outcome, 'shared');
   assert.deepEqual(downloads, []);
   assert.equal(sharedFiles.length, 1);
-  assert.equal(sharedFiles[0].name, 'Hisapp_Settlement_ST-20261010-02.jpg');
+  assert.equal(sharedFiles[0].name, 'HishApp_Settlement_ST-20261010-02.jpg');
   assert.equal(sharedFiles[0].type, 'image/jpeg');
 });
 

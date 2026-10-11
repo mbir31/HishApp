@@ -76,7 +76,7 @@ export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose, s
     downloadAnchor.setAttribute('href', dataStr);
     downloadAnchor.setAttribute(
       'download',
-      `Hisapp_AuditTrail_${new Date().toISOString().slice(0, 10)}.json`
+      `HishApp_AuditTrail_${new Date().toISOString().slice(0, 10)}.json`
     );
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
@@ -88,10 +88,10 @@ export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose, s
     try {
       await restorePatientEntry(entry);
       backupEngine.onDataChanged();
-      showToast('রেকর্ড উদ্ধার সফল!', `${entry.patientName} (${entry.procedure}) এর রেকর্ড পুনরায় রিস্টোর করা হয়েছে`, 'success');
+      showToast('Record Restored!', `Restored record for ${entry.patientName} (${entry.procedure})`, 'success');
       await loadLogs();
     } catch (err: any) {
-      showToast('উদ্ধার ব্যর্থ', err?.message || 'রেকর্ড রিস্টোর করা যায়নি', 'error');
+      showToast('Restore Failed', err?.message || 'Could not restore record', 'error');
     }
   };
 
@@ -272,10 +272,10 @@ export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose, s
                         type="button"
                         onClick={() => handleRestoreEntry(log.previousData)}
                         className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shadow-xs active:scale-95 transition shrink-0 ml-2"
-                        title="এই রেকর্ডটি পুনরায় সক্রিয় তালিকায় ফিরিয়ে আনুন"
+                        title="Restore this record back to active entries"
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
-                        <span>উদ্ধার করুন</span>
+                        <span>Restore</span>
                       </button>
                     )}
                   </div>

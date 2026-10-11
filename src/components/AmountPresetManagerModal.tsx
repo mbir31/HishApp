@@ -150,6 +150,8 @@ export const AmountPresetManagerModal: React.FC<AmountPresetManagerModalProps> =
             <div className="relative">
               <input
                 type="number"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 placeholder="Amount (0 for free)"
                 min="0"
                 step="any"
@@ -191,6 +193,8 @@ export const AmountPresetManagerModal: React.FC<AmountPresetManagerModalProps> =
                     />
                     <input
                       type="number"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       value={editAmount}
                       onChange={(e) => setEditAmount(e.target.value)}
                       placeholder="Amount"

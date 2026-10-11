@@ -1,4 +1,4 @@
-// Service Worker for Hisapp - Dental Clinic Income & Settlement Tracker
+// Service Worker for HishApp - Dental Clinic Income & Settlement Tracker
 // v3: refreshed app-launcher icons (appicon.jpeg set)
 const CACHE_NAME = 'hisapp-cache-v3';
 const ASSETS_TO_CACHE = [

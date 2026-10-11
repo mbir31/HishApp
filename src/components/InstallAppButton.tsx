@@ -39,7 +39,7 @@ export const InstallAppButton: React.FC = () => {
         type="button"
         onClick={handleClick}
         className="btn-gradient flex items-center gap-1 px-2.5 py-1 rounded-full text-white text-[10px] font-bold tracking-wide shrink-0"
-        title="Install Hisapp as an app on this device"
+        title="Install HishApp as an app on this device"
       >
         <Download className="w-3 h-3" />
         <span>INSTALL APP</span>
@@ -58,12 +58,12 @@ export const InstallAppButton: React.FC = () => {
             <div className="flex items-center gap-3 pb-2 border-b border-slate-100">
               <img
                 src="/applogo.png"
-                alt="Hisapp"
+                alt="HishApp"
                 className="w-10 h-10 rounded-xl object-contain border border-slate-200 shadow-xs"
               />
               <div className="flex-1">
                 <h4 className="text-sm font-bold text-slate-900">
-                  {isIOS ? 'Install Hisapp on iPhone / iPad' : 'Install Hisapp on this device'}
+                  {isIOS ? 'Install HishApp on iPhone / iPad' : 'Install HishApp on this device'}
                 </h4>
                 <p className="text-[11px] text-slate-500">
                   {isIOS ? 'Add to your Home Screen' : 'One click away from your home screen'}
@@ -93,7 +93,7 @@ export const InstallAppButton: React.FC = () => {
                   <br />
                   2. Tap <strong>Install app</strong> or <strong>Add to Home screen</strong>.
                   <br />
-                  3. Confirm — Hisapp opens full-screen and works offline.
+                  3. Confirm — HishApp opens full-screen and works offline.
                 </>
               )}
             </p>

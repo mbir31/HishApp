@@ -28,6 +28,7 @@ import { SettlementReceiptModal } from './components/SettlementReceiptModal';
 import { ToastContainer } from './components/Toast';
 import { AppBackground } from './components/AppBackground';
 import { displayDateKey, weekdayNameDateKey } from './utils/dateUtils';
+import { checkAndRunAutoWeeklyBackup } from './services/autoWeeklyBackup';
 
 /** Left-to-right order of the bottom navigation — drives the slide direction
  *  of the tab change animation. */
@@ -176,10 +177,22 @@ export default function App() {
     };
   }, []);
 
+  // 7-Day Automatic Background JSON Backup:
+  // Evaluates every 7 days and triggers a background JSON file export seamlessly
+  useEffect(() => {
+    if (isUnlocked && !isLoading && entries.length > 0) {
+      const timer = setTimeout(() => {
+        void checkAndRunAutoWeeklyBackup();
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [isUnlocked, isLoading, entries.length]);
+
   // Entry saved callback — local backup happens in IndexedDB, then cloud sync
   const handleEntrySaved = (newEntry: PatientEntry) => {
     setEntries((prev) => [newEntry, ...prev]);
     backupEngine.onDataChanged();
+    void checkAndRunAutoWeeklyBackup();
   };
 
   // Settlement completed callback
@@ -194,6 +207,7 @@ export default function App() {
     );
     setReceiptSettlement(settlement);
     backupEngine.onDataChanged();
+    void checkAndRunAutoWeeklyBackup();
   };
 
   const handleSettlementDeleted = (settlementId: string) => {
@@ -272,12 +286,12 @@ export default function App() {
             <div className="relative w-16 h-16 rounded-2xl p-0.5 bg-gradient-to-tr from-indigo-500 via-sky-500 to-emerald-400 shadow-lg shadow-indigo-500/10 flex items-center justify-center animate-pulse">
               <img
                 src="/applogo.png"
-                alt="Hisapp Launcher Logo"
+                alt="HishApp Launcher Logo"
                 className="w-full h-full rounded-[14px] object-contain bg-white p-1"
               />
             </div>
             <p className="text-xs font-bold text-slate-500 tracking-wider uppercase">
-              Loading Hisapp...
+              Loading HishApp...
             </p>
           </div>
         </div>
@@ -295,7 +309,7 @@ export default function App() {
           onUnlock={(session) => {
             setIsUnlocked(true);
             void refreshData();
-            showToast('স্বাগতম!', `ভল্ট সফলভাবে আনলক হয়েছে (${session.phoneNumber})`, 'success');
+            showToast('Welcome!', `Vault successfully unlocked (${session.phoneNumber})`, 'success');
           }}
           onLogin={async (phone, pin) => {
             const session = await backupEngine.login(phone, pin);
@@ -332,9 +346,9 @@ export default function App() {
           } else {
             try {
               await backupEngine.backupNow();
-              showToast('ক্লাউড সিঙ্ক সম্পন্ন', 'সব রেকর্ড ক্লাউড ভল্টে আপডেট হয়েছে', 'success');
+              showToast('Cloud Sync Completed', 'All records have been updated to the Cloud Vault', 'success');
             } catch (err: any) {
-              showToast('সিঙ্ক সমস্যা', err?.message, 'error');
+              showToast('Sync Error', err?.message, 'error');
             }
           }
         }}
@@ -422,14 +436,14 @@ export default function App() {
             lockApp();
             setIsUnlocked(false);
             setIsSettingsOpen(false);
-            showToast('অ্যাপ লক করা হয়েছে', 'পুনরায় প্রবেশ করতে পিন অথবা বায়োমেট্রিক দিন', 'info');
+            showToast('App Locked', 'Enter PIN or use biometrics to re-enter', 'info');
           }}
           onVaultSignOut={async () => {
             markLoggedOut();
             await backupEngine.signOut();
             setIsUnlocked(false);
             setIsSettingsOpen(false);
-            showToast('লগআউট সম্পন্ন', 'অ্যাপটি সুরক্ষিতভাবে লক করা হয়েছে', 'info');
+            showToast('Signed Out', 'The app has been securely locked', 'info');
           }}
           onVaultChangePin={(oldPin, newPin) => backupEngine.changePin(oldPin, newPin)}
           onBackupNow={() => backupEngine.backupNow()}

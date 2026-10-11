@@ -11,7 +11,7 @@ interface PWAInstallButtonProps {
 export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
   className = '',
   variant = 'primary',
-  label = 'ইনস্টল করুন (Install App)',
+  label = 'Install App',
 }) => {
   const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
   const [showIOSModal, setShowIOSModal] = useState(false);
@@ -24,7 +24,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
     return (
       <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-200/80 shadow-xs ${className}`}>
         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-        <span>অ্যাপটি ইনস্টল রয়েছে (Installed)</span>
+        <span>App is Installed</span>
       </div>
     );
   }
@@ -54,7 +54,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
         type="button"
         onClick={handleInstallClick}
         disabled={isInstalling}
-        title="স্মার্টফোনে বা কম্পিউটারে ১-ক্লিকে অ্যাপ হিসেবে ইনস্টল করুন"
+        title="Install as an app on your smartphone or computer with 1 click"
         className={`group relative overflow-hidden transition-all duration-200 cursor-pointer active:scale-95 ${
           variant === 'primary'
             ? 'flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white shadow-md shadow-indigo-500/25 bg-gradient-to-r from-indigo-600 via-sky-600 to-indigo-600 bg-[length:200%_auto] hover:bg-right hover:shadow-lg'
@@ -81,7 +81,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
                   <Smartphone className="w-4 h-4" />
                 </div>
                 <h3 className="text-sm font-bold text-slate-800">
-                  iPhone / iPad-এ অ্যাপ ইনস্টল
+                  Install App on iPhone / iPad
                 </h3>
               </div>
               <button
@@ -94,28 +94,28 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
             </div>
 
             <p className="text-xs text-slate-600 leading-relaxed">
-              Safari ব্রাউজারে ২-টি সহজ ধাপে অ্যাপটি আপনার হোম স্ক্রিনে যুক্ত করুন:
+              Add the app to your Home Screen in Safari in 2 easy steps:
             </p>
 
             <ol className="space-y-2.5 text-xs text-slate-700 bg-slate-50 p-3.5 rounded-xl border border-slate-200/70">
               <li className="flex items-start gap-2.5">
                 <span className="w-5 h-5 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">
-                  ১
+                  1
                 </span>
                 <span>
-                  Safari ব্রাউজারের নিচের বারে <strong>Share</strong> (
+                  Tap <strong>Share</strong> (
                   <Share2 className="w-3.5 h-3.5 inline text-sky-600" />
-                  ) বাটনে চাপ দিন।
+                  ) at the bottom of Safari.
                 </span>
               </li>
               <li className="flex items-start gap-2.5">
                 <span className="w-5 h-5 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">
-                  ২
+                  2
                 </span>
                 <span>
-                  তালিকায় নিচে স্ক্রল করে <strong>Add to Home Screen</strong> (
+                  Scroll down and tap <strong>Add to Home Screen</strong> (
                   <PlusSquare className="w-3.5 h-3.5 inline text-indigo-600" />
-                  ) নির্বাচন করুন।
+                  ).
                 </span>
               </li>
             </ol>
@@ -125,7 +125,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
               onClick={() => setShowIOSModal(false)}
               className="w-full py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition"
             >
-              ঠিক আছে (Got it)
+              Got it
             </button>
           </div>
         </div>
@@ -145,7 +145,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
                   <Smartphone className="w-4 h-4" />
                 </div>
                 <h3 className="text-sm font-bold text-slate-800">
-                  হোম স্ক্রিনে ইনস্টল করুন
+                  Install to Home Screen
                 </h3>
               </div>
               <button
@@ -158,15 +158,15 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
             </div>
 
             <p className="text-xs text-slate-600 leading-relaxed">
-              আপনার ব্রাউজারে অ্যাপ ইনস্টল করার জন্য:
+              To install the app in your browser:
             </p>
 
             <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/70 text-xs text-slate-700 space-y-2">
               <p>
-                <strong>Chrome / Android:</strong> ব্রাউজারের উপরে ডানদিকের ৩-ডট (⋮) মেনুতে ট্যাপ করে <strong>"Install App"</strong> অথবা <strong>"Add to Home screen"</strong> চাপুন।
+                <strong>Chrome / Android:</strong> Tap the 3-dot menu (⋮) in the top-right corner and select <strong>"Install App"</strong> or <strong>"Add to Home screen"</strong>.
               </p>
               <p>
-                <strong>Desktop:</strong> ব্রাউজারের অ্যাড্রেস বারের ডানপাশে থাকা ইনস্টল আইকনে (Install icon) ক্লিক করুন।
+                <strong>Desktop:</strong> Click the Install icon on the right side of the browser address bar.
               </p>
             </div>
 
@@ -175,7 +175,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
               onClick={() => setShowInfoModal(false)}
               className="w-full py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition"
             >
-              বন্ধ করুন (Close)
+              Close
             </button>
           </div>
         </div>

@@ -670,6 +670,8 @@ export const RecordsTab: React.FC<RecordsTabProps> = ({
                 </label>
                 <input
                   type="number"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={editingEntry.receivedAmount}
                   onChange={(e) =>
                     setEditingEntry({

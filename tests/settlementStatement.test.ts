@@ -87,12 +87,12 @@ test('the statement carries the clinic figures and a formal certification', () =
   assert.match(statement.statement, /Yashfin Dental Care/);
   assert.match(statement.statement, /12 patient visits/);
   assert.match(statement.statement, /৳ 3,000, which shall be carried forward/);
-  assert.match(statement.statementBangla, /৳ 10,000/);
+  assert.equal(statement.statementBangla, '');
   assert.equal(statement.remarks, 'Paid via bKash, balance next Thursday');
   assert.equal(statement.signatureLeft, 'Signature of Doctor');
   assert.equal(statement.signatureRight, 'Signature of Clinic Authority');
   assert.equal(statement.generatedOn, '10 Oct 2026, 18:30');
-  assert.equal(settlementImageFileName(settlement), 'Hisapp_Settlement_ST-20261010-01.jpg');
+  assert.equal(settlementImageFileName(settlement), 'HishApp_Settlement_ST-20261010-01.jpg');
 });
 
 test('the wording follows the balance: due, cleared or advance', () => {
@@ -290,6 +290,6 @@ test('the builder honours currency and Bangla overrides', () => {
     ['Tk 8,400', 'Tk 1,600', 'Tk 10,000', 'Tk 7,000', 'Tk 3,000']
   );
 
-  const withBangla = buildSettlementStatement(settlement, settings);
+  const withBangla = buildSettlementStatement(settlement, settings, { includeBangla: true });
   assert.ok(withBangla.statementBangla.length > 0);
 });

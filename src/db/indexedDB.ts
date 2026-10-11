@@ -5,7 +5,7 @@
  *
  *   • DentalIncomeTrackerDB — device settings plus the "guest" ledger that
  *     exists before any Google account has ever been linked to the device.
- *   • HisappLedger_<uid>    — one ledger per signed-in Google account. Records
+ *   • HishAppLedger_<uid>   — one ledger per signed-in Google account. Records
  *     of one account can never be shown to, merged into, or uploaded for
  *     another account, and a sign-out keeps them safe on the device.
  *
@@ -35,7 +35,7 @@ import { todayDateKey } from '../utils/dateUtils';
 
 /** Device settings database. Its name predates per-account ledgers and is kept for continuity. */
 export const DEVICE_DB_NAME = 'DentalIncomeTrackerDB';
-const ACCOUNT_DB_PREFIX = 'HisappLedger_';
+const ACCOUNT_DB_PREFIX = 'HishAppLedger_';
 const DB_VERSION = 4;
 /** 2 = per-account ledgers + persistent outbox (see migration in loadLedgerOwner). */
 export const LEDGER_LAYOUT_VERSION = 2;
@@ -181,7 +181,7 @@ function openNamedDB(name: string): Promise<IDBDatabase> {
     const request = indexedDB.open(name, DB_VERSION);
     request.onupgradeneeded = () => createLedgerStores(request.result);
     request.onblocked = () => {
-      console.warn(`Database "${name}" upgrade is waiting for another open Hisapp tab to close.`);
+      console.warn(`Database "${name}" upgrade is waiting for another open HishApp tab to close.`);
     };
     request.onsuccess = () => {
       const db = request.result;

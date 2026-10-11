@@ -178,12 +178,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     e.preventDefault();
     const cleanPhone = phoneInput.replace(/\D/g, '').trim();
     if (cleanPhone.length !== 11) {
-      showToast('ভুল মোবাইল নম্বর', 'অনুগ্রহ করে ১১ ডিজিটের মোবাইল নম্বর দিন (যেমন: 017XXXXXXXX)', 'warning');
+      showToast('Invalid Mobile Number', 'Please enter an 11-digit mobile number (e.g., 017XXXXXXXX)', 'warning');
       return;
     }
     const cleanPin = pinInput.trim();
     if (cleanPin.length !== 4) {
-      showToast('ভুল পিন নম্বর', 'পিন অবশ্যই ৪ ডিজিটের হতে হবে (যেমন: 1234)', 'warning');
+      showToast('Invalid PIN', 'PIN must be 4 digits (e.g., 1234)', 'warning');
       return;
     }
 
@@ -201,13 +201,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       }
 
       showToast(
-        session.isNew ? 'নতুন ক্লাউড ভল্ট তৈরি হয়েছে!' : 'ক্লাউড ভল্ট আনলক হয়েছে!',
-        `মোবাইল নম্বর: ${cleanPhone}`,
+        session.isNew ? 'New Cloud Vault created!' : 'Cloud Vault unlocked!',
+        `Mobile: ${cleanPhone}`,
         'success'
       );
       setPinInput('');
     } catch (err: any) {
-      showToast('ভল্ট এরর', err?.message || 'লগইন ব্যর্থ হয়েছে', 'error');
+      showToast('Vault Error', err?.message || 'Login failed', 'error');
     } finally {
       setIsLoggingIn(false);
     }
@@ -216,7 +216,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const handleBiometricLogin = async () => {
     const cleanPhone = (phoneInput || backup.user?.phoneNumber || '').replace(/\D/g, '').trim();
     if (cleanPhone.length !== 11) {
-      showToast('মোবাইল নম্বর প্রয়োজন', 'বায়োমেট্রিক লগইনের জন্য ১১ ডিজিটের নম্বর দিন', 'warning');
+      showToast('Mobile Number Required', 'Enter 11-digit mobile number for biometric login', 'warning');
       return;
     }
 
@@ -226,10 +226,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       if (rememberPhone) {
         localStorage.setItem('hisapp_saved_phone', cleanPhone);
       }
-      showToast('বায়োমেট্রিক লগইন সফল!', `ভল্ট আইডি: ${cleanPhone}`, 'success');
+      showToast('Biometric Login Successful!', `Vault ID: ${cleanPhone}`, 'success');
       setPinInput('');
     } catch (err: any) {
-      showToast('বায়োমেট্রিক সমস্যা', err?.message || 'যাচাই ব্যর্থ হয়েছে', 'error');
+      showToast('Biometric Error', err?.message || 'Verification failed', 'error');
     } finally {
       setIsBiometricLoading(false);
     }
@@ -242,14 +242,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       if (isBiometricEnrolled) {
         removeBiometricEnrollment(backup.user.phoneNumber);
         setIsBiometricEnrolled(false);
-        showToast('বায়োমেট্রিক বন্ধ করা হয়েছে', 'এই ডিভাইসের ফিঙ্গারপ্রিন্ট সংযোগ বিচ্ছিন্ন হয়েছে', 'info');
+        showToast('Biometrics Disabled', 'Fingerprint credentials removed for this device', 'info');
       } else {
         await onVaultEnableBiometric();
         setIsBiometricEnrolled(true);
-        showToast('বায়োমেট্রিক সক্রিয় হয়েছে!', 'এখন থেকে ফিঙ্গারপ্রিন্ট বা ফেস আইডি দিয়ে এক ক্লিকে লগইন করা যাবে', 'success');
+        showToast('Biometrics Enabled!', 'You can now sign in with fingerprint or Face ID', 'success');
       }
     } catch (err: any) {
-      showToast('বায়োমেট্রিক ত্রুটি', err?.message || 'সেটআপ ব্যর্থ হয়েছে', 'error');
+      showToast('Biometric Error', err?.message || 'Setup failed', 'error');
     } finally {
       setIsBiometricLoading(false);
     }
@@ -258,28 +258,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const handleChangePin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (oldPinInput.trim().length !== 4) {
-      showToast('ভুল বর্তমান পিন', 'বর্তমান পিন ৪ ডিজিটের হতে হবে', 'warning');
+      showToast('Invalid Current PIN', 'Current PIN must be 4 digits', 'warning');
       return;
     }
     if (newPinInput.trim().length !== 4) {
-      showToast('ভুল নতুন পিন', 'নতুন পিন ৪ ডিজিটের হতে হবে', 'warning');
+      showToast('Invalid New PIN', 'New PIN must be 4 digits', 'warning');
       return;
     }
     if (newPinInput.trim() !== confirmPinInput.trim()) {
-      showToast('পিন মিলেনি', 'নতুন পিন এবং নিশ্চিতকরণ পিন একই হতে হবে', 'warning');
+      showToast('PIN Mismatch', 'New PIN and confirmation PIN must match', 'warning');
       return;
     }
 
     setIsSavingPin(true);
     try {
       await onVaultChangePin(oldPinInput.trim(), newPinInput.trim());
-      showToast('পিন সফলভাবে পরিবর্তন হয়েছে!', 'আপনার নতুন ৪ ডিজিটের পিন সংরক্ষিত হয়েছে', 'success');
+      showToast('PIN Changed Successfully!', 'Your new 4-digit PIN has been saved', 'success');
       setShowChangePin(false);
       setOldPinInput('');
       setNewPinInput('');
       setConfirmPinInput('');
     } catch (err: any) {
-      showToast('পিন পরিবর্তন ব্যর্থ', err?.message || 'অনুগ্রহ করে সঠিক বর্তমান পিন দিন', 'error');
+      showToast('PIN Change Failed', err?.message || 'Please enter your correct current PIN', 'error');
     } finally {
       setIsSavingPin(false);
     }
@@ -288,24 +288,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const handleBiometricPinReset = async () => {
     if (!backup.user) return;
     if (newPinInput.trim().length !== 4) {
-      showToast('নতুন পিন দিন', 'নতুন পিন অবশ্যই ৪ ডিজিটের হতে হবে', 'warning');
+      showToast('New PIN Required', 'New PIN must be 4 digits', 'warning');
       return;
     }
     if (newPinInput.trim() !== confirmPinInput.trim()) {
-      showToast('পিন মিলেনি', 'নতুন পিন এবং নিশ্চিতকরণ পিন একই হতে হবে', 'warning');
+      showToast('PIN Mismatch', 'New PIN and confirmation PIN must match', 'warning');
       return;
     }
 
     setIsSavingPin(true);
     try {
       await onVaultResetPinBiometric(backup.user.phoneNumber, newPinInput.trim());
-      showToast('পিন পরিবর্তিত হয়েছে!', 'বায়োমেট্রিক যাচাইয়ের মাধ্যমে নতুন ৪-ডিজিট পিন সংরক্ষিত হয়েছে', 'success');
+      showToast('PIN Updated!', 'New 4-digit PIN saved via biometric verification', 'success');
       setShowChangePin(false);
       setOldPinInput('');
       setNewPinInput('');
       setConfirmPinInput('');
     } catch (err: any) {
-      showToast('পিন রিসেট ব্যর্থ', err?.message || 'বায়োমেট্রিক যাচাই হয়নি', 'error');
+      showToast('PIN Reset Failed', err?.message || 'Biometric verification was not completed', 'error');
     } finally {
       setIsSavingPin(false);
     }
@@ -380,12 +380,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       const res = await backupEngine.reconcileVault();
       setReconcileResult(res);
       showToast(
-        res.status === 'perfect-parity' ? '১০০% ডাটা সমান্তরাল!' : 'ডাটা অটো-হিল সম্পন্ন!',
+        res.status === 'perfect-parity' ? '100% Data Parity!' : 'Data Auto-Healed!',
         res.message,
         'success'
       );
     } catch (err: any) {
-      showToast('যাচাই ব্যর্থ', err?.message || 'ডাটা অখণ্ডতা যাচাই করা যায়নি', 'error');
+      showToast('Audit Failed', err?.message || 'Data integrity check could not be completed', 'error');
     } finally {
       setIsReconciling(false);
     }
@@ -408,16 +408,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const handleRestoreSnapshot = async (key: 'latest' | 'yesterday' | 'last_week', label: string) => {
-    if (!window.confirm(`আপনি কি সত্যিই ${label} রিস্টোর করতে চান? আপনার বর্তমান ডাটাবেজ এই স্ন্যাপশট দ্বারা পুনরুত্থিত হবে।`)) {
+    if (!window.confirm(`Are you sure you want to restore ${label}? Your current database will be restored to this snapshot.`)) {
       return;
     }
     setIsRestoringSnapshot(true);
     try {
       const res = await backupEngine.restoreCloudSnapshotByKey(key);
-      showToast('স্ন্যাপশট রিস্টোর সফল!', `${res.entries}টি এন্ট্রি ও ${res.settlements}টি সেটেলমেন্ট সফলভাবে রিস্টোর হয়েছে`, 'success');
+      showToast('Snapshot Restore Succeeded!', `${res.entries} entries and ${res.settlements} settlements successfully restored`, 'success');
       onDataImported?.();
     } catch (err: any) {
-      showToast('রিস্টোর ব্যর্থ', err?.message || 'স্ন্যাপশট রিস্টোর করা যায়নি', 'error');
+      showToast('Restore Failed', err?.message || 'Could not restore snapshot', 'error');
     } finally {
       setIsRestoringSnapshot(false);
     }
@@ -428,7 +428,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       const json = await exportAllDataJSON();
       downloadFile(
         json,
-        `Hisapp_Data_Backup_${todayDateKey()}.json`,
+        `HishApp_Data_Backup_${todayDateKey()}.json`,
         'application/json;charset=utf-8;'
       );
       const updated = await saveSettings({
@@ -447,13 +447,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       const { patientEntriesCSV, settlementsCSV } = await exportAllDataCSV();
       downloadFile(
         patientEntriesCSV,
-        `Hisapp_Patient_Entries_${todayDateKey()}.csv`,
+        `HishApp_Patient_Entries_${todayDateKey()}.csv`,
         'text/csv;charset=utf-8;'
       );
       setTimeout(() => {
         downloadFile(
           settlementsCSV,
-          `Hisapp_Settlements_${todayDateKey()}.csv`,
+          `HishApp_Settlements_${todayDateKey()}.csv`,
           'text/csv;charset=utf-8;'
         );
       }, 400);
@@ -500,7 +500,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         const safetyBackup = await exportAllDataJSON();
         downloadFile(
           safetyBackup,
-          `Hisapp_Safety_Before_Import_${todayDateKey()}.json`,
+          `HishApp_Safety_Before_Import_${todayDateKey()}.json`,
           'application/json;charset=utf-8;'
         );
       } catch (safetyErr) {
@@ -568,7 +568,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                   Cloud Data Vault (Firestore)
                 </h4>
-                <p className="text-[10px] text-slate-500">১১ ডিজিটের মোবাইল নম্বর ও ৪ ডিজিটের গোপন PIN</p>
+                <p className="text-[10px] text-slate-500">11-digit mobile number and 4-digit secret PIN</p>
               </div>
             </div>
             <span
@@ -600,14 +600,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             /* Login / Vault Registration Form */
             <form onSubmit={handleVaultLogin} className="space-y-3 pt-1">
               <p className="text-xs text-slate-600 leading-relaxed">
-                আপনার ১১ ডিজিটের মোবাইল নম্বর এবং ৪ ডিজিটের গোপন PIN দিয়ে লগইন করুন। প্রথমবার দিলে সেই নম্বরের জন্য স্বয়ংক্রিয়ভাবে একটি নিরাপদ <strong>Cloud Data Vault</strong> তৈরি হবে।
+                Log in with your 11-digit mobile number and 4-digit secret PIN. On first entry, a secure <strong>Cloud Data Vault</strong> is created automatically for this number.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
                   <label className="text-[11px] font-bold text-slate-700 flex items-center gap-1 mb-1">
                     <Smartphone className="w-3.5 h-3.5 text-indigo-600" />
-                    মোবাইল নম্বর (১১ ডিজিট)
+                    Mobile Number (11 Digits)
                   </label>
                   <input
                     type="tel"
@@ -624,7 +624,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <div>
                   <label className="text-[11px] font-bold text-slate-700 flex items-center gap-1 mb-1">
                     <Lock className="w-3.5 h-3.5 text-indigo-600" />
-                    গোপন PIN (৪ ডিজিট)
+                    Secret PIN (4 Digits)
                   </label>
                   <input
                     type="password"
@@ -647,7 +647,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   onChange={(e) => setRememberPhone(e.target.checked)}
                   className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 accent-indigo-600"
                 />
-                <span>মোবাইল নম্বর মনে রাখুন (Remember mobile number on this device)</span>
+                <span>Remember mobile number on this device</span>
               </label>
 
               {backup.error && (
@@ -665,12 +665,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   {isLoggingIn ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>ভল্ট খোলা হচ্ছে...</span>
+                      <span>Opening Vault...</span>
                     </>
                   ) : (
                     <>
                       <LogIn className="w-3.5 h-3.5" />
-                      <span>লগইন / নতুন ভল্ট তৈরি করুন</span>
+                      <span>Sign In / Create Vault</span>
                     </>
                   )}
                 </button>
@@ -688,7 +688,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     ) : (
                       <Fingerprint className="w-4 h-4" />
                     )}
-                    <span>বায়োমেট্রিক দিয়ে এক ক্লিকে লগইন (Fingerprint / Face ID)</span>
+                    <span>One-Tap Biometric Sign In (Fingerprint / Face ID)</span>
                   </button>
                 )}
               </div>
@@ -703,13 +703,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs font-bold text-slate-900 truncate">
-                      ভল্ট আইডি: {backup.user.phoneNumber}
+                      Vault ID: {backup.user.phoneNumber}
                     </p>
                     <p className="text-[10.5px] text-slate-500 truncate flex items-center gap-1">
                       <Clock className="w-3 h-3" />
                       {backup.lastBackupAt
-                        ? `সর্বশেষ সিঙ্ক: ${new Date(backup.lastBackupAt).toLocaleTimeString()}`
-                        : 'এখনো ক্লাউডে সিঙ্ক হয়নি'}
+                        ? `Last Synced: ${new Date(backup.lastBackupAt).toLocaleTimeString()}`
+                        : 'Not yet synced to cloud'}
                     </p>
                   </div>
                 </div>
@@ -720,17 +720,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       type="button"
                       onClick={() => onVaultLock()}
                       className="px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 text-[10px] font-bold flex items-center gap-1 active:scale-95 transition"
-                      title="অ্যাপ এখনই লক করুন (Lock App)"
+                      title="Lock App Now"
                     >
                       <Lock className="w-3 h-3 text-amber-600" />
-                      লক করুন
+                      Lock App
                     </button>
                   )}
                   <button
                     type="button"
                     onClick={() => onVaultSignOut()}
                     className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-bold flex items-center gap-1 active:scale-95 transition"
-                    title="ভল্ট থেকে সাইন আউট করুন"
+                    title="Sign Out from Vault"
                   >
                     <LogOut className="w-3 h-3" />
                     Sign Out
@@ -746,11 +746,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <Fingerprint className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-slate-900 truncate">ডিভাইস বায়োমেট্রিক আনলক</p>
+                      <p className="text-xs font-bold text-slate-900 truncate">Device Biometric Unlock</p>
                       <p className="text-[10px] text-slate-500 truncate">
                         {isBiometricEnrolled
-                          ? 'ফিঙ্গারপ্রিন্ট / ফেস আইডি সক্রিয় আছে'
-                          : 'PIN ছাড়াই দ্রুত আনলকের জন্য সক্রিয় করুন'}
+                          ? 'Fingerprint / Face ID active'
+                          : 'Enable for quick PIN-less daily unlock'}
                       </p>
                     </div>
                   </div>
@@ -768,9 +768,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     {isBiometricLoading ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     ) : isBiometricEnrolled ? (
-                      'বন্ধ করুন'
+                      'Disable'
                     ) : (
-                      'চালু করুন'
+                      'Enable'
                     )}
                   </button>
                 </div>
@@ -799,20 +799,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   onClick={handleReconcileVault}
                   disabled={isReconciling}
                   className="px-3 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition disabled:opacity-60"
-                  title="লোকাল ও ক্লাউড ডাটার মধ্যে ১টি রেকর্ডেরও অমিল আছে কিনা স্বয়ংক্রিয়ভাবে অডিট করুন"
+                  title="Automatically audit and verify zero data desync between local storage and cloud"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 text-indigo-600 ${isReconciling ? 'animate-spin' : ''}`} />
-                  <span>{isReconciling ? 'যাচাই হচ্ছে...' : 'ডাটা অমিল অডিট (Audit)'}</span>
+                  <span>{isReconciling ? 'Auditing...' : 'Audit Data Parity'}</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={handleToggleTimeMachine}
                   className="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition"
-                  title="টাইম-মেশিন ৩-স্তরীয় ক্লাউড স্ন্যাপশট রিকভারি"
+                  title="Time-Machine 3-tier Cloud Snapshot Recovery"
                 >
                   <History className="w-3.5 h-3.5 text-sky-600" />
-                  <span>{showTimeMachine ? 'টাইম-মেশিন লুকান' : 'টাইম-মেশিন'}</span>
+                  <span>{showTimeMachine ? 'Hide Time-Machine' : 'Time-Machine'}</span>
                 </button>
 
                 <button
@@ -821,12 +821,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   className="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition"
                 >
                   <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>{showChangePin ? 'পিন পরিবর্তন বাতিল' : 'পিন পরিবর্তন (Change PIN)'}</span>
+                  <span>{showChangePin ? 'Cancel PIN Change' : 'Change PIN'}</span>
                 </button>
 
                 {backup.pendingChanges && (
                   <span className="text-[10px] font-semibold text-sky-700 bg-sky-50 border border-sky-200 px-2.5 py-1 rounded-full">
-                    {backup.pendingCount} পরিবর্তন ক্লাউডে পাঠানোর অপেক্ষায়
+                    {backup.pendingCount} changes waiting to sync
                   </span>
                 )}
               </div>
@@ -843,7 +843,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div className="flex items-center justify-between font-bold">
                     <span className="flex items-center gap-1">
                       <FileCheck className="w-4 h-4 text-emerald-600" />
-                      ডাটা অখণ্ডতা অডিট রিপোর্ট
+                      Data Integrity Audit Report
                     </span>
                     <span className="text-[10px] bg-white px-2 py-0.5 rounded-full border border-slate-200 text-slate-600">
                       {new Date(reconcileResult.checkedAt).toLocaleTimeString()}
@@ -851,11 +851,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                   <div className="grid grid-cols-2 gap-2 font-mono text-[11px] pt-1 text-slate-700">
                     <div>
-                      লোকাল এন্ট্রি: <strong className="text-slate-900">{reconcileResult.localEntries}</strong> | সেটেলমেন্ট:{' '}
+                      Local Entries: <strong className="text-slate-900">{reconcileResult.localEntries}</strong> | Settlements:{' '}
                       <strong className="text-slate-900">{reconcileResult.localSettlements}</strong>
                     </div>
                     <div>
-                      ক্লাউড এন্ট্রি: <strong className="text-slate-900">{reconcileResult.remoteEntries}</strong> | সেটেলমেন্ট:{' '}
+                      Cloud Entries: <strong className="text-slate-900">{reconcileResult.remoteEntries}</strong> | Settlements:{' '}
                       <strong className="text-slate-900">{reconcileResult.remoteSettlements}</strong>
                     </div>
                   </div>
@@ -869,27 +869,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div className="flex items-center justify-between">
                     <h5 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                       <History className="w-4 h-4 text-sky-600" />
-                      ক্লাউড টাইম-মেশিন রিকভারি (Rolling Snapshots)
+                      Cloud Time-Machine Recovery (Rolling Snapshots)
                     </h5>
                     <button
                       type="button"
                       onClick={handleToggleTimeMachine}
                       className="text-[10.5px] font-semibold text-sky-700 hover:text-sky-900"
                     >
-                      বন্ধ করুন
+                      Close
                     </button>
                   </div>
                   <p className="text-[11px] text-slate-600 leading-relaxed">
-                    কোনো দুর্ঘটনা বা ভুল ডাটা ওভাররাইট হলে যেকোনো পূর্ববর্তী সম্পূর্ণ স্ন্যাপশট থেকে ১ ক্লিকে ডাটাবেজ পুনরুত্থান করুন।
+                    Recover your entire clinical database in 1 click from any previous complete cloud snapshot in case of accidental overwrite or device data loss.
                   </p>
 
                   {isLoadingSnapshots ? (
                     <div className="py-4 text-center text-xs text-slate-500">
                       <Loader2 className="w-4 h-4 animate-spin inline-block mr-1 text-sky-600" />
-                      ক্লাউড স্ন্যাপশট খোঁজা হচ্ছে...
+                      Searching cloud snapshots...
                     </div>
                   ) : snapshots.length === 0 ? (
-                    <div className="py-3 text-center text-xs text-slate-500">কোনো ক্লাউড স্ন্যাপশট পাওয়া যায়নি।</div>
+                    <div className="py-3 text-center text-xs text-slate-500">No cloud snapshots found.</div>
                   ) : (
                     <div className="space-y-1.5">
                       {snapshots.map((snap) => (
@@ -901,10 +901,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             <div className="font-bold text-slate-800">{snap.label}</div>
                             <div className="text-[10.5px] text-slate-500 font-mono">
                               {snap.exists
-                                ? `${snap.entryCount} এন্ট্রি, ${snap.settlementCount} সেটেলমেন্ট • ${new Date(
+                                ? `${snap.entryCount} entries, ${snap.settlementCount} settlements • ${new Date(
                                     snap.timestamp
                                   ).toLocaleString()}`
-                                : 'এখনও সংরক্ষিত হয়নি'}
+                                : 'Not yet created'}
                             </div>
                           </div>
                           {snap.exists && (
@@ -914,7 +914,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                               disabled={isRestoringSnapshot}
                               className="px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-bold text-[11px] active:scale-95 transition disabled:opacity-60 shrink-0"
                             >
-                              রিস্টোর করুন
+                              Restore
                             </button>
                           )}
                         </div>
@@ -933,11 +933,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div className="flex items-center justify-between">
                     <h5 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                       <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
-                      গোপন PIN পরিবর্তন করুন
+                      Change Secret PIN
                     </h5>
                     {isBiometricEnrolled && (
                       <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                        বায়োমেট্রিক প্রস্তুত
+                        Biometrics Ready
                       </span>
                     )}
                   </div>
@@ -945,7 +945,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <div>
                       <label className="text-[10px] font-bold text-slate-600 block mb-0.5">
-                        বর্তমান PIN
+                        Current PIN
                       </label>
                       <input
                         type="password"
@@ -953,14 +953,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         maxLength={4}
                         value={oldPinInput}
                         onChange={(e) => setOldPinInput(e.target.value.replace(/\D/g, ''))}
-                        placeholder={isBiometricEnrolled ? 'ঐচ্ছিক (বায়োমেট্রিক ছাড়া)' : '••••'}
+                        placeholder={isBiometricEnrolled ? 'Optional (with biometrics)' : '••••'}
                         className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs text-center font-bold outline-none focus:border-indigo-500"
                         required={!isBiometricEnrolled}
                       />
                     </div>
                     <div>
                       <label className="text-[10px] font-bold text-slate-600 block mb-0.5">
-                        নতুন PIN (৪ ডিজিট)
+                        New PIN (4 Digits)
                       </label>
                       <input
                         type="password"
@@ -975,7 +975,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                     <div>
                       <label className="text-[10px] font-bold text-slate-600 block mb-0.5">
-                        নিশ্চিত নতুন PIN
+                        Confirm New PIN
                       </label>
                       <input
                         type="password"
@@ -996,7 +996,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       onClick={() => setShowChangePin(false)}
                       className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100"
                     >
-                      বাতিল
+                      Cancel
                     </button>
 
                     {/* Biometric PIN Reset button if biometrics is enrolled */}
@@ -1006,10 +1006,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         onClick={handleBiometricPinReset}
                         disabled={isSavingPin}
                         className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 disabled:opacity-60 shadow-xs active:scale-95 transition"
-                        title="বর্তমান পিন ছাড়াই ফিঙ্গারপ্রিন্ট দিয়ে নতুন পিন সেট করুন"
+                        title="Set new PIN using fingerprint without typing current PIN"
                       >
                         <Fingerprint className="w-3.5 h-3.5" />
-                        <span>বায়োমেট্রিক দিয়ে পিন বদলান</span>
+                        <span>Update PIN with Biometrics</span>
                       </button>
                     )}
 
@@ -1018,7 +1018,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       disabled={isSavingPin}
                       className="btn-gradient px-3 py-1.5 rounded-lg text-xs font-bold text-white disabled:opacity-60"
                     >
-                      {isSavingPin ? 'সংরক্ষণ হচ্ছে...' : 'বর্তমান PIN দিয়ে সেভ করুন'}
+                      {isSavingPin ? 'Saving...' : 'Save with Current PIN'}
                     </button>
                   </div>
                 </form>
@@ -1027,9 +1027,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {/* Automatic Sync Switch */}
               <label className="flex items-center justify-between p-2.5 rounded-xl bg-white/80 border border-white shadow-2xs cursor-pointer">
                 <div>
-                  <p className="text-xs font-bold text-slate-900">স্বয়ংক্রিয় ক্লাউড সিঙ্ক (Auto-Sync)</p>
+                  <p className="text-xs font-bold text-slate-900">Automatic Cloud Sync (Auto-Sync)</p>
                   <p className="text-[11px] text-slate-500">
-                    প্রতিটি পরিবর্তন স্বয়ংক্রিয়ভাবে ক্লাউড ভল্ট এবং সকল ডিভাইসে লাইভ সিঙ্ক হবে।
+                    Every modification is automatically synced live to Cloud Vault and accessible across devices.
                   </p>
                 </div>
                 <button
@@ -1173,6 +1173,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div className="relative">
                 <input
                   type="number"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   min="1"
                   max="100"
                   step="1"
@@ -1224,36 +1226,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             Backups &amp; Data Safety
           </h4>
 
-          {/* Weekly Offline Backup Safety Reminder Banner */}
-          {(!settings.lastOfflineExportAt ||
-            Date.now() - settings.lastOfflineExportAt > 7 * 24 * 3600 * 1000) && (
-            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2 text-xs animate-in fade-in">
-              <div className="flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                <div>
-                  <h5 className="font-bold text-amber-900 leading-tight">
-                    সাপ্তাহিক অফলাইন ব্যাকআপ রিমাইন্ডার
-                  </h5>
-                  <p className="text-[11px] text-amber-800 leading-relaxed mt-0.5">
-                    {settings.lastOfflineExportAt
-                      ? `সর্বশেষ অফলাইন ডাউনলোড হয়েছে ${Math.floor(
-                          (Date.now() - settings.lastOfflineExportAt) / (1000 * 3600 * 24)
-                        )} দিন আগে।`
-                      : 'এখনও কোনো অফলাইন ব্যাকআপ ফাইল ডাউনলোড করা হয়নি।'}{' '}
-                    যেকোনো অপ্রত্যাশিত ডিভাইস রিসেট বা নেটওয়ার্ক সমস্যার হাত থেকে বাঁচতে ১-ক্লিকে অফলাইন কপি সংরক্ষণ করুন।
-                  </p>
-                </div>
+          {/* 7-Day Automatic Background Backup Status Card */}
+          <div className="p-3.5 rounded-2xl bg-gradient-to-br from-indigo-50/70 to-emerald-50/70 border border-indigo-100/80 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-indigo-600" />
+                <h5 className="text-xs font-bold text-slate-900">
+                  7-Day Automated JSON Auto-Export
+                </h5>
               </div>
-              <button
-                type="button"
-                onClick={handleExportJSON}
-                className="w-full py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs active:scale-95 transition"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>১-ক্লিকে অফলাইন ব্যাকআপ ফাইল ডাউনলোড করুন (JSON)</span>
-              </button>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                Active &amp; Running
+              </span>
             </div>
-          )}
+            <p className="text-[11px] text-slate-600 leading-relaxed">
+              HishApp automatically compiles and saves a full database JSON backup every 7 days in the background, ensuring your clinical ledger is permanently safeguarded without requiring manual intervention.
+            </p>
+            <button
+              type="button"
+              onClick={handleExportJSON}
+              className="w-full py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Download Fresh Snapshot Now (JSON)</span>
+            </button>
+          </div>
 
           {/* Dual-Store Redundancy Status Card */}
           <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
@@ -1261,7 +1258,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div className="flex items-center gap-2">
                 <Database className="w-4 h-4 text-indigo-600" />
                 <h5 className="text-xs font-bold text-slate-900">
-                  ডুয়েল-স্টোর রিডান্ড্যান্সি (Dual-Store Shadow Mirror)
+                  Dual-Store Redundancy (Shadow Mirror)
                 </h5>
               </div>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
@@ -1274,8 +1271,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   Primary DB
                 </div>
                 <div className="font-bold text-slate-800">
-                  {dualStoreHealth?.primaryEntries ?? '...'} এন্ট্রি,{' '}
-                  {dualStoreHealth?.primarySettlements ?? '...'} সেটেলমেন্ট
+                  {dualStoreHealth?.primaryEntries ?? '...'} entries,{' '}
+                  {dualStoreHealth?.primarySettlements ?? '...'} settlements
                 </div>
               </div>
               <div className="p-2 rounded-xl bg-white border border-slate-200">
@@ -1283,13 +1280,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   Safety Mirror DB
                 </div>
                 <div className="font-bold text-slate-800">
-                  {dualStoreHealth?.mirrorEntries ?? '...'} এন্ট্রি,{' '}
-                  {dualStoreHealth?.mirrorSettlements ?? '...'} সেটেলমেন্ট
+                  {dualStoreHealth?.mirrorEntries ?? '...'} entries,{' '}
+                  {dualStoreHealth?.mirrorSettlements ?? '...'} settlements
                 </div>
               </div>
             </div>
             <p className="text-[10.5px] text-slate-500 leading-relaxed font-sans">
-              ব্রাউজার বা মেমোরি ক্র্যাশের হাত থেকে রক্ষা করতে মূল ডাটাবেজের পাশাপাশি একটি সম্পূর্ণ পৃথক শ্যাডো ডাটাবেজে রেকর্ডগুলোর সার্বক্ষণিক ক্লোন রাখা হয়।
+              To protect against browser clearing or unexpected memory drops, a completely independent shadow database maintains continuous mirrors of all records alongside the primary database.
             </p>
           </div>
 
@@ -1297,10 +1294,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
             <div>
               <h5 className="text-xs font-bold text-slate-900">
-                অডিট ট্রেইল ও রিসাইকেল বিন (Recycle Bin)
+                Audit Trail &amp; Recycle Bin
               </h5>
               <p className="text-[11px] text-slate-500">
-                মুছে ফেলা যেকোনো রেকর্ড উদ্ধার করুন অথবা অডিট লগ পরীক্ষা করুন।
+                Restore deleted records or inspect the comprehensive clinical audit trail.
               </p>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
@@ -1308,17 +1305,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 type="button"
                 onClick={() => setIsAuditModalOpen(true)}
                 className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold active:scale-95 transition shadow-xs flex items-center gap-1"
-                title="মুছে ফেলা রেকর্ডসমূহ দেখুন ও উদ্ধার করুন"
+                title="View and restore deleted records"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                <span>রিসাইকেল বিন</span>
+                <span>Recycle Bin</span>
               </button>
               <button
                 type="button"
                 onClick={() => setIsAuditModalOpen(true)}
                 className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold active:scale-95 transition shrink-0 shadow-xs"
               >
-                অডিট লগ
+                Audit Log
               </button>
             </div>
           </div>
@@ -1439,7 +1436,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="flex items-center gap-2.5">
             <img
               src="/applogo.png"
-              alt="Hisapp Launcher Logo"
+              alt="HishApp Launcher Logo"
               className="w-7 h-7 rounded-lg object-contain shadow-xs border border-slate-200 bg-white"
             />
             <div>
@@ -1480,11 +1477,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div className="flex items-center gap-3 pb-2 border-b border-slate-100">
                 <img
                   src="/applogo.png"
-                  alt="Hisapp"
+                  alt="HishApp"
                   className="w-10 h-10 rounded-xl object-contain border border-slate-200 shadow-xs"
                 />
                 <div>
-                  <h4 className="text-sm font-bold text-slate-900">Install Hisapp on iPhone / iPad</h4>
+                  <h4 className="text-sm font-bold text-slate-900">Install HishApp on iPhone / iPad</h4>
                   <p className="text-[11px] text-slate-500">Add to your Home Screen</p>
                 </div>
               </div>
