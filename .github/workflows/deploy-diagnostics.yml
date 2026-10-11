@@ -1,4 +1,4 @@
-name: Diagnose failed Firebase deployment
+name: Verify Firebase rules deployment access
 
 on:
   push:
@@ -6,43 +6,42 @@ on:
       - arena/908dbb77-hishapp
 
 permissions:
-  actions: read
   contents: read
 
 jobs:
-  diagnose:
+  verify:
     runs-on: ubuntu-latest
     steps:
-      - name: Retrieve the failed deployment error
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Validate workflow syntax
         env:
           GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
         run: |
-          gh run view 38148988055 --log-failed > "$RUNNER_TEMP/failed-deployment.log"
-          python3 - <<'PY'
-          import os
-          import re
-          from pathlib import Path
-
-          log = Path(os.environ['RUNNER_TEMP'], 'failed-deployment.log').read_text()
-          lines = [line for line in log.splitlines() if re.search(
-              r'Error:|npm error|HTTP Error|permission|denied|Unauthorized|SyntaxError|ERR_|Cannot find|not authorized',
-              line, re.IGNORECASE,
-          )]
-          message = '\n'.join(lines[-30:]) if lines else 'No matching error lines found.'
-          message = message.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
-          print(f'::notice title=Previous Firebase deployment error::{message}')
-          PY
-
-      - name: Check Firebase deployment permissions without changing IAM
+          mkdir -p "$RUNNER_TEMP/actionlint"
+          gh release download v1.7.12 --repo rhysd/actionlint --pattern 'actionlint_1.7.12_linux_amd64.tar.gz' --pattern 'actionlint_1.7.12_checksums.txt' --dir "$RUNNER_TEMP/actionlint"
+          cd "$RUNNER_TEMP/actionlint"
+          grep 'actionlint_1.7.12_linux_amd64.tar.gz' actionlint_1.7.12_checksums.txt | sha256sum -c -
+          tar -xzf actionlint_1.7.12_linux_amd64.tar.gz actionlint
+          ./actionlint "$GITHUB_WORKSPACE"/.github/workflows/*.yml
+      - name: Verify the Admin SDK can read the existing Firestore release
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: npm run deploy:firestore-rules -- --project hishapp1 --check-access
+      - name: Compile the committed rules without publishing them
         env:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
           python3 -m pip install --quiet 'google-auth[requests]'
-          python3 - <<'PYCODE'
+          python3 - <<'PY'
           import json
           import os
           import urllib.request
+          from pathlib import Path
           from google.auth.transport.requests import Request
           from google.oauth2.service_account import Credentials
 
@@ -51,33 +50,21 @@ jobs:
               scopes=['https://www.googleapis.com/auth/cloud-platform'],
           )
           credentials.refresh(Request())
-          permissions = [
-              'serviceusage.services.get',
-              'serviceusage.services.use',
-              'serviceusage.services.enable',
-              'firebaserules.rulesets.create',
-              'firebaserules.rulesets.get',
-              'firebaserules.rulesets.list',
-              'firebaserules.releases.create',
-              'firebaserules.releases.update',
-              'firebaserules.releases.get',
-              'resourcemanager.projects.get',
-              'resourcemanager.projects.getIamPolicy',
-              'resourcemanager.projects.setIamPolicy',
-              'datastore.databases.get',
-              'datastore.databases.list',
-              'firebase.projects.get',
-          ]
+          source = Path('firestore.rules').read_text()
           request = urllib.request.Request(
-              'https://cloudresourcemanager.googleapis.com/v1/projects/hishapp1:testIamPermissions',
-              data=json.dumps({'permissions': permissions}).encode(),
+              'https://firebaserules.googleapis.com/v1/projects/hishapp1:test',
+              data=json.dumps({'source': {'files': [{'name': 'firestore.rules', 'content': source}]}}).encode(),
               headers={
                   'Authorization': f'Bearer {credentials.token}',
                   'Content-Type': 'application/json',
               },
           )
           with urllib.request.urlopen(request) as response:
-              granted = set(json.load(response).get('permissions', []))
-          print('::notice title=Granted Firebase permissions::' + ', '.join(sorted(granted)))
-          print('::notice title=Missing Firebase permissions::' + ', '.join(sorted(set(permissions) - granted)))
-          PYCODE
+              result = json.load(response)
+          errors = [issue for issue in result.get('issues', []) if issue.get('severity') == 'ERROR']
+          if errors:
+              for issue in errors:
+                  print('::error title=Firestore compilation error::' + issue.get('description', 'Unknown error'))
+              raise SystemExit(1)
+          print('::notice title=Firestore Rules API verified::Committed rules compile successfully; no release was changed.')
+          PY
