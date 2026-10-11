@@ -5,6 +5,7 @@ import {
   DollarSign,
   CheckCircle2,
   FileText,
+  CalendarRange,
   ChevronDown,
   ChevronUp,
   Receipt,
@@ -17,6 +18,7 @@ import { ClinicSettings, PatientEntry, Settlement } from '../types';
 import { deleteSettlement, executeSettlement } from '../db/indexedDB';
 import { exportSettlementAsImage } from '../utils/settlementImageExport';
 import { MonthlySummaryModal } from './MonthlySummaryModal';
+import { SpecificSummaryModal } from './SpecificSummaryModal';
 import { displayDateKey, formatDateKey, shiftDateKey, todayDateKey, weekdayNameDateKey } from '../utils/dateUtils';
 
 interface SettlementTabProps {
@@ -49,6 +51,7 @@ export const SettlementTab: React.FC<SettlementTabProps> = ({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [showHistory, setShowHistory] = useState<boolean>(false);
   const [isMonthlyModalOpen, setIsMonthlyModalOpen] = useState<boolean>(false);
+  const [isSpecificModalOpen, setIsSpecificModalOpen] = useState<boolean>(false);
   // Settlement id currently being rendered into a JPG (spinner on that row)
   const [exportingImageId, setExportingImageId] = useState<string | null>(null);
 
@@ -120,7 +123,7 @@ export const SettlementTab: React.FC<SettlementTabProps> = ({
     if (eligibleEntriesInRange.length === 0 && previousDue === 0) {
       showToast(
         'Nothing to Settle',
-        'There are no pending procedures in this date range and no previous arrears.',
+        'There are no pending procedures in this date range and no previous due.',
         'warning'
       );
       return;
@@ -196,7 +199,7 @@ export const SettlementTab: React.FC<SettlementTabProps> = ({
 
 *FINANCIAL BREAKDOWN:*
 • *Doctor ${settings.sharePercentage || 40}% Share:* ${currency} ${formatNumber(s.periodShare)}
-• *Previous Arrears:* ${currency} ${formatNumber(s.previousDue)}
+• *Previous Due:* ${currency} ${formatNumber(s.previousDue)}
 • *Total Payable:* ${currency} ${formatNumber(s.totalPayable)}
 • *Amount Paid by Clinic:* ${currency} ${formatNumber(s.amountReceived)}
 • *Due Carried Forward:* ${currency} ${formatNumber(s.dueBalance)}
@@ -262,10 +265,10 @@ _Generated electronically by HishApp (hishapp1.web.app)_`;
             </div>
           </div>
 
-          {/* Arrears and Pending Visits decomposition */}
+          {/* Due and Pending Visits decomposition */}
           <div className="grid grid-cols-2 gap-3 pt-3 border-t border-white/20 text-xs">
             <div>
-              <p className="text-indigo-200 text-[11px]">Previous Carry-Over Arrears</p>
+              <p className="text-indigo-200 text-[11px]">Previous Carry-Over Due</p>
               <p className="font-extrabold text-white text-base">
                 {currency} {formatNumber(previousDue)}
               </p>
@@ -302,7 +305,33 @@ _Generated electronically by HishApp (hishapp1.web.app)_`;
           className="btn-gradient btn-gradient--sky self-start sm:self-auto px-4 py-2.5 rounded-2xl text-white text-xs font-bold flex items-center gap-2 shrink-0"
         >
           <Download className="w-4 h-4" />
-          <span>Export Monthly PDF</span>
+          <span>Export Statement</span>
+        </button>
+      </div>
+
+      {/* Specific Period Statement Export Banner */}
+      <div className="ios-glass-card rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-emerald-200/70 bg-gradient-to-r from-emerald-50/70 via-white/40 to-teal-50/70">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-emerald-600/30">
+            <CalendarRange className="w-5 h-5" />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-slate-900 leading-tight">
+              Specific Settlement Statement
+            </h4>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Export official formatted PDF for any custom date range with 40% share, patient volume &amp; due balance
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setIsSpecificModalOpen(true)}
+          className="btn-gradient btn-gradient--emerald self-start sm:self-auto px-4 py-2.5 rounded-2xl text-white text-xs font-bold flex items-center gap-2 shrink-0"
+        >
+          <Download className="w-4 h-4" />
+          <span>Export Statement</span>
         </button>
       </div>
 
@@ -390,7 +419,7 @@ _Generated electronically by HishApp (hishapp1.web.app)_`;
           </div>
 
           <div className="flex items-center justify-between text-xs">
-            <span className="text-slate-600">Previous Arrears Carried Over:</span>
+            <span className="text-slate-600">Previous Due Carried Over:</span>
             <span className="font-bold text-amber-700">
               {currency} {formatNumber(previousDue)}
             </span>
@@ -630,6 +659,18 @@ _Generated electronically by HishApp (hishapp1.web.app)_`;
         <MonthlySummaryModal
           isOpen={isMonthlyModalOpen}
           onClose={() => setIsMonthlyModalOpen(false)}
+          entries={entries}
+          settlements={settlements}
+          settings={settings}
+          showToast={showToast}
+        />
+      )}
+
+      {/* Specific Period Summary Formatted PDF Modal */}
+      {isSpecificModalOpen && (
+        <SpecificSummaryModal
+          isOpen={isSpecificModalOpen}
+          onClose={() => setIsSpecificModalOpen(false)}
           entries={entries}
           settlements={settlements}
           settings={settings}

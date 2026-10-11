@@ -256,7 +256,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
 
           <div className="ios-glass-subtle flex items-center gap-3 px-4 py-3 rounded-2xl shrink-0">
             <div className="text-right">
-              <p className="text-[10px] uppercase font-bold text-slate-400">Previous Arrears</p>
+              <p className="text-[10px] uppercase font-bold text-slate-400">Previous Due</p>
               <p className="text-xs font-bold text-slate-700">
                 {currency} {formatNumber(metrics.previousCarryForwardDue)}
               </p>

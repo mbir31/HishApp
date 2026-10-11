@@ -242,16 +242,7 @@ export const Header: React.FC<HeaderProps> = ({
               className="w-full h-full rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center overflow-hidden p-0.5 text-slate-700 hover:text-indigo-600 active:scale-90 transition-all duration-150"
               aria-label="Settings and Profile"
             >
-              {backup.user ? (
-                <span
-                  className="w-full h-full flex items-center justify-center bg-gradient-to-tr from-indigo-600 to-sky-500 text-white text-[11px] font-bold rounded-full"
-                  title={`Vault: ${backup.user.phoneNumber}`}
-                >
-                  {backup.user.phoneNumber.slice(-2)}
-                </span>
-              ) : (
-                <Settings className="w-5 h-5 text-slate-600" />
-              )}
+              <Settings className="w-5 h-5 text-slate-600" />
             </button>
           </div>
         </div>
