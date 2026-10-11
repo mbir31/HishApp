@@ -26,4 +26,4 @@ The failure is most likely caused by two related problems:
 1. **Node Version Updated:** `.github/workflows/firebase-deploy.yml` configured to use Node `24` (`node-version: '24'`).
 2. **Lockfile Fully Synchronized:** `package-lock.json` regenerated cleanly using `npm install` and tested with `npm ci`.
 3. **Resilient CI Installation:** Workflow dependency step enhanced with automatic fallback (`npm ci || npm install --legacy-peer-deps`) preventing any future `EUSAGE` or lockfile mismatch halts.
-4. **All Tests & Builds Passing:** Verified with `npm ci`, `npm run build` (production Vite bundle), `tsc --noEmit` (clean lint), and all 99 automated tests passing.
+4. **All Tests & Builds Passing:** Verified with `npm ci`, `npm run build` (production Vite bundle), `tsc --noEmit` (clean lint), and all 111 automated tests passing.
