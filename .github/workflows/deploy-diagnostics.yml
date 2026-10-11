@@ -1,0 +1,35 @@
+name: Diagnose failed Firebase deployment
+
+on:
+  push:
+    branches:
+      - arena/908dbb77-hishapp
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Retrieve the failed deployment error
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh run view 38148988055 --log-failed > "$RUNNER_TEMP/failed-deployment.log"
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          log = Path(os.environ['RUNNER_TEMP'], 'failed-deployment.log').read_text()
+          lines = [line for line in log.splitlines() if re.search(
+              r'Error:|npm error|HTTP Error|permission|denied|Unauthorized|SyntaxError|ERR_|Cannot find|not authorized',
+              line, re.IGNORECASE,
+          )]
+          message = '\n'.join(lines[-30:]) if lines else 'No matching error lines found.'
+          message = message.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+          print(f'::notice title=Previous Firebase deployment error::{message}')
+          PY
