@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { ClinicSettings, PatientEntry, Settlement } from '../types';
+import { parseDateKey } from '../utils/dateUtils';
 
 export interface MonthlySummaryData {
   monthStr: string; // YYYY-MM
@@ -96,7 +97,100 @@ export function generateMonthlySummaryData(
   };
 }
 
-export function exportMonthlySummaryPDF(data: MonthlySummaryData, settings: ClinicSettings): void {
+export function generateRangeSummaryData(
+  fromDate: string,
+  toDate: string,
+  allEntries: PatientEntry[],
+  allSettlements: Settlement[],
+  allTimePreviousDue: number
+): MonthlySummaryData {
+  // Entries within the selected date range (inclusive)
+  const monthEntries = allEntries.filter((e) => e.date >= fromDate && e.date <= toDate);
+  monthEntries.sort((a, b) => a.date.localeCompare(b.date) || a.serial - b.serial);
+
+  // Settlements settled within the selected date range (inclusive)
+  const monthSettlements = allSettlements.filter(
+    (s) => s.settlementDate >= fromDate && s.settlementDate <= toDate
+  );
+
+  const fmtDisplay = (key: string) => {
+    const parsed = parseDateKey(key);
+    return parsed
+      ? parsed.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+      : key;
+  };
+  const monthName = `${fmtDisplay(fromDate)} – ${fmtDisplay(toDate)}`;
+
+  const totalGross = monthEntries.reduce((sum, e) => sum + e.receivedAmount, 0);
+  const totalDoctorShare = monthEntries.reduce((sum, e) => sum + e.doctorShare, 0);
+  const totalClinicShare = totalGross - totalDoctorShare;
+  const patientCount = monthEntries.length;
+
+  const amountReceivedByClinic = monthSettlements.reduce((sum, s) => sum + s.amountReceived, 0);
+
+  // Procedure breakdown
+  const procMap = new Map<string, { count: number; gross: number; doctorShare: number }>();
+  monthEntries.forEach((e) => {
+    const pName = e.procedure || 'General Treatment';
+    const curr = procMap.get(pName) || { count: 0, gross: 0, doctorShare: 0 };
+    procMap.set(pName, {
+      count: curr.count + 1,
+      gross: curr.gross + e.receivedAmount,
+      doctorShare: curr.doctorShare + e.doctorShare,
+    });
+  });
+
+  const procedureBreakdown = Array.from(procMap.entries())
+    .map(([name, data]) => ({ name, ...data }))
+    .sort((a, b) => b.doctorShare - a.doctorShare);
+
+  // Outstanding balance for this range:
+  // Pending entries in this range (not settled yet)
+  const pendingInRange = monthEntries
+    .filter((e) => e.settlementStatus === 'Pending')
+    .reduce((sum, e) => sum + e.doctorShare, 0);
+
+  // If there's a settlement in this range, latest due balance; otherwise previous due + pending in range
+  let outstandingBalance = 0;
+  if (monthSettlements.length > 0) {
+    const latestRangeSettlement = monthSettlements[0];
+    outstandingBalance = latestRangeSettlement.dueBalance + pendingInRange;
+  } else {
+    outstandingBalance = allTimePreviousDue + pendingInRange;
+  }
+
+  return {
+    monthStr: fromDate,
+    monthName,
+    periodStart: fromDate,
+    periodEnd: toDate,
+    entries: monthEntries,
+    settlements: monthSettlements,
+    totalGross,
+    totalDoctorShare,
+    totalClinicShare,
+    patientCount,
+    amountReceivedByClinic,
+    previousDue: allTimePreviousDue,
+    outstandingBalance,
+    procedureBreakdown,
+  };
+}
+
+/** Header / labeling options that differ between the Monthly and Specific statement PDFs. */
+interface SummaryPdfHeaderOptions {
+  reportLabel: string;
+  periodLine: string;
+  emptyPeriodText: string;
+  itemizedSectionTitle: string;
+  filename: string;
+}
+
+function buildSummaryPDF(
+  data: MonthlySummaryData,
+  settings: ClinicSettings,
+  header: SummaryPdfHeaderOptions
+): void {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'pt',
@@ -135,12 +229,12 @@ export function exportMonthlySummaryPDF(data: MonthlySummaryData, settings: Clin
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
   doc.setTextColor(255, 255, 255);
-  doc.text('MONTHLY SETTLEMENT REPORT', pageWidth - 36, 38, { align: 'right' });
+  doc.text(header.reportLabel, pageWidth - 36, 38, { align: 'right' });
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(224, 231, 255);
-  doc.text(`Month: ${data.monthName}`, pageWidth - 36, 56, { align: 'right' });
+  doc.text(header.periodLine, pageWidth - 36, 56, { align: 'right' });
   doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth - 36, 72, { align: 'right' });
 
   currentY = 110;
@@ -196,7 +290,7 @@ export function exportMonthlySummaryPDF(data: MonthlySummaryData, settings: Clin
   doc.text(`Clinic Share (${clinicPercent}%): ${fmt(data.totalClinicShare)}`, 48, currentY + 30);
 
   doc.text(`Clinic Payouts Cleared: ${fmt(data.amountReceivedByClinic)}`, 48 + colW, currentY + 16);
-  doc.text(`Previous Arrears Carried In: ${fmt(data.previousDue)}`, 48 + colW, currentY + 30);
+  doc.text(`Previous Due Carried In: ${fmt(data.previousDue)}`, 48 + colW, currentY + 30);
 
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(180, 83, 9);
@@ -224,7 +318,7 @@ export function exportMonthlySummaryPDF(data: MonthlySummaryData, settings: Clin
   ]);
 
   if (procRows.length === 0) {
-    procRows.push(['No procedures recorded in this month', '0', fmt(0), fmt(0), '0%']);
+    procRows.push([`No procedures recorded in ${header.emptyPeriodText}`, '0', fmt(0), fmt(0), '0%']);
   }
 
   autoTable(doc, {
@@ -264,7 +358,7 @@ export function exportMonthlySummaryPDF(data: MonthlySummaryData, settings: Clin
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(15, 23, 42);
-  doc.text('3. Itemized Patient Records for the Month', 36, currentY);
+  doc.text(header.itemizedSectionTitle, 36, currentY);
 
   currentY += 8;
 
@@ -352,6 +446,30 @@ export function exportMonthlySummaryPDF(data: MonthlySummaryData, settings: Clin
   );
 
   // Save the PDF
-  const filename = `Dental_Settlement_Summary_${data.monthStr}.pdf`;
-  doc.save(filename);
+  doc.save(header.filename);
+}
+
+export function exportMonthlySummaryPDF(data: MonthlySummaryData, settings: ClinicSettings): void {
+  buildSummaryPDF(data, settings, {
+    reportLabel: 'MONTHLY SETTLEMENT REPORT',
+    periodLine: `Month: ${data.monthName}`,
+    emptyPeriodText: 'this month',
+    itemizedSectionTitle: '3. Itemized Patient Records for the Month',
+    filename: `Dental_Settlement_Summary_${data.monthStr}.pdf`,
+  });
+}
+
+export function exportRangeSummaryPDF(
+  data: MonthlySummaryData,
+  settings: ClinicSettings,
+  fromDate: string,
+  toDate: string
+): void {
+  buildSummaryPDF(data, settings, {
+    reportLabel: 'SPECIFIC SETTLEMENT REPORT',
+    periodLine: `Period: ${fromDate} to ${toDate}`,
+    emptyPeriodText: 'this period',
+    itemizedSectionTitle: '3. Itemized Patient Records for the Selected Period',
+    filename: `Dental_Settlement_Statement_${fromDate}_to_${toDate}.pdf`,
+  });
 }

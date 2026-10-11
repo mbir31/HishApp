@@ -53,7 +53,7 @@
 
 Every dental surgeon practicing in private chambers and clinics across Bangladesh encounters the exact same daily hurdle:
 
-> *"The clinic retains 60%, and my professional share is 40%. After treating patients all day, writing in paper notebooks and calculating shares at month-end is exhausting. Unpaid arrears, carried-over dues, and clinic advances get lost in loose sheets!"*
+> *"The clinic retains 60%, and my professional share is 40%. After treating patients all day, writing in paper notebooks and calculating shares at month-end is exhausting. Unpaid dues, carried-over dues, and clinic advances get lost in loose sheets!"*
 
 **HishApp was built to eliminate this friction entirely.**  
 It combines **“হিসাব” (Account & Calculation)** and **“হিস্যা” (Doctor's Earned Percentage Share)** into a seamless, modern, lightning-fast digital ledger designed specifically for dental chambers.
@@ -80,14 +80,14 @@ It combines **“হিসাব” (Account & Calculation)** and **“হিস
 
 ### 💬 4. 1-Tap Direct WhatsApp Share
 - Instant **Direct WhatsApp Share** button on every settlement receipt and historical record.
-- Pre-formats a formal, professional message breakdown (Clinic Name, Attending Surgeon, Period, Patients Settled, Share Breakdown, Arrears, and Next Due) directly into WhatsApp with zero copying required.
+- Pre-formats a formal, professional message breakdown (Clinic Name, Attending Surgeon, Period, Patients Settled, Share Breakdown, Dues, and Next Due) directly into WhatsApp with zero copying required.
 
 ### 🖼️ 5. Formal JPG Statement & Monthly PDF Export
 - **Certified JPG Statement:** Crisp, high-resolution graphic statement generated on-canvas, complete with certification text, ready for WhatsApp sharing or printing.
 - **Monthly Summary PDF:** Formatted multi-page PDF report with procedure-wise breakdown, daily volume, and financial audits.
 
 ### 📊 6. Interactive Analytics Dashboard
-- Comprehensive metrics: Today's Share, This Month's Income, Pending Settlement Visits, and Outstanding Arrears.
+- Comprehensive metrics: Today's Share, This Month's Income, Pending Settlement Visits, and Outstanding Dues.
 - Interactive charts showing treatment revenue distribution and 7-day/30-day earnings velocity.
 
 ### 🔒 7. Cloud Data Vault with Biometrics
@@ -189,7 +189,7 @@ Dental surgeons frequently ask:
 | | Customizable Amount Presets | Quick increment buttons (+500, +1000, +2000, etc.) |
 | **Share & Calculations**| Configurable Doctor % | Default 40% (customizable to 30%, 50%, or any custom rate) |
 | | Live Calculations | Real-time calculation of Doctor Share & Clinic Retention |
-| | Unpaid Arrears Carry-Over | Unpaid clinic dues auto-transfer to subsequent cycles |
+| | Unpaid Dues Carry-Over | Unpaid clinic dues auto-transfer to subsequent cycles |
 | | Advance Settlement Credits | Clinic prepayments deduct smoothly from future batches |
 | **Sharing & Reports** | 1-Tap Direct WhatsApp Share | Share formatted settlement & monthly breakdowns via WhatsApp |
 | | Certified High-Res JPG | Export certified visual receipts with EN+BN certification text (Canvas 2x) |
