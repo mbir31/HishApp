@@ -424,15 +424,12 @@ export const EntryTab: React.FC<EntryTabProps> = ({
       {/* Single-Liner Header */}
       <div className="px-1">
         <h2 className="text-xs sm:text-sm font-bold text-slate-700 tracking-tight">
-          New Entry : Payment per patient
+          New Entry : Payment Record of Individual Patient
         </h2>
       </div>
 
       {/* The date pill is centered and kept separate from the rapid-entry fields. */}
-      <div className="flex flex-col items-center gap-1.5 px-1">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-          Visit Date{date === todayStr ? ' · Today' : ''}
-        </span>
+      <div className="flex flex-col items-center px-1">
         <DateSelector value={date} onChange={setDate} ariaLabel="Visit date" />
       </div>
 

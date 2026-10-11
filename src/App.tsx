@@ -11,12 +11,18 @@ import {
 } from './db/indexedDB';
 import { backupEngine, type BackupStatus } from './services/backupEngine';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
+import {
+  isAppUnlockedToday,
+  lockApp,
+  markLoggedOut,
+} from './services/appLockService';
 import { Header } from './components/Header';
 import { BottomNav } from './components/BottomNav';
 import { DashboardTab } from './components/DashboardTab';
 import { EntryTab } from './components/EntryTab';
 import { SettlementTab } from './components/SettlementTab';
 import { RecordsTab } from './components/RecordsTab';
+import { LoginScreen } from './components/LoginScreen';
 import { SettingsModal } from './components/SettingsModal';
 import { SettlementReceiptModal } from './components/SettlementReceiptModal';
 import { ToastContainer } from './components/Toast';
@@ -48,6 +54,7 @@ export default function App() {
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [settings, setSettings] = useState<ClinicSettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isUnlocked, setIsUnlocked] = useState<boolean>(() => isAppUnlockedToday());
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [receiptSettlement, setReceiptSettlement] = useState<Settlement | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -146,6 +153,27 @@ export default function App() {
         .then((reg) => reg.update())
         .catch((err) => console.log('SW registration note:', err));
     }
+  }, []);
+
+  // Once-A-Day Unlock Rule:
+  // If user doesn't log out, no credentials needed to access the app for the same day.
+  // In a day, PIN or biometric needed only once.
+  // When a new day arrives or if user logs out, the app requires unlock again.
+  useEffect(() => {
+    const checkDailyUnlock = () => {
+      const unlocked = isAppUnlockedToday();
+      setIsUnlocked(unlocked);
+    };
+
+    document.addEventListener('visibilitychange', checkDailyUnlock);
+    window.addEventListener('focus', checkDailyUnlock);
+    const dayInterval = setInterval(checkDailyUnlock, 30000);
+
+    return () => {
+      document.removeEventListener('visibilitychange', checkDailyUnlock);
+      window.removeEventListener('focus', checkDailyUnlock);
+      clearInterval(dayInterval);
+    };
   }, []);
 
   // Entry saved callback — local backup happens in IndexedDB, then cloud sync
@@ -257,6 +285,33 @@ export default function App() {
     );
   }
 
+  // App is accessible ONLY through login screen if not unlocked today
+  if (!isUnlocked) {
+    return (
+      <div className="relative z-0 min-h-screen text-slate-800 flex flex-col font-sans">
+        <AppBackground />
+        <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+        <LoginScreen
+          onUnlock={(session) => {
+            setIsUnlocked(true);
+            void refreshData();
+            showToast('স্বাগতম!', `ভল্ট সফলভাবে আনলক হয়েছে (${session.phoneNumber})`, 'success');
+          }}
+          onLogin={async (phone, pin) => {
+            const session = await backupEngine.login(phone, pin);
+            void refreshData();
+            return session;
+          }}
+          onBiometricLogin={async (phone) => {
+            const session = await backupEngine.loginWithBiometrics(phone);
+            void refreshData();
+            return session;
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="relative z-0 min-h-screen text-slate-800 flex flex-col font-sans">
       {/* Fixed, non-scrollable soothing gradient background (behind everything) */}
@@ -363,7 +418,19 @@ export default function App() {
           onVaultBiometricLogin={(phone) => backupEngine.loginWithBiometrics(phone)}
           onVaultEnableBiometric={() => backupEngine.enableBiometrics()}
           onVaultResetPinBiometric={(phone, newPin) => backupEngine.resetPinWithBiometrics(phone, newPin)}
-          onVaultSignOut={() => backupEngine.signOut()}
+          onVaultLock={() => {
+            lockApp();
+            setIsUnlocked(false);
+            setIsSettingsOpen(false);
+            showToast('অ্যাপ লক করা হয়েছে', 'পুনরায় প্রবেশ করতে পিন অথবা বায়োমেট্রিক দিন', 'info');
+          }}
+          onVaultSignOut={async () => {
+            markLoggedOut();
+            await backupEngine.signOut();
+            setIsUnlocked(false);
+            setIsSettingsOpen(false);
+            showToast('লগআউট সম্পন্ন', 'অ্যাপটি সুরক্ষিতভাবে লক করা হয়েছে', 'info');
+          }}
           onVaultChangePin={(oldPin, newPin) => backupEngine.changePin(oldPin, newPin)}
           onBackupNow={() => backupEngine.backupNow()}
           onToggleAutoBackup={async (enabled) => {

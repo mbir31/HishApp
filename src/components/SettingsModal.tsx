@@ -61,6 +61,7 @@ interface SettingsModalProps {
   onVaultEnableBiometric: () => Promise<boolean>;
   onVaultResetPinBiometric: (phone: string, newPin: string) => Promise<void>;
   onVaultSignOut: () => Promise<void>;
+  onVaultLock?: () => void;
   onVaultChangePin: (oldPin: string, newPin: string) => Promise<void>;
   onBackupNow: () => Promise<any>;
   onToggleAutoBackup: (enabled: boolean) => void;
@@ -79,6 +80,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onVaultEnableBiometric,
   onVaultResetPinBiometric,
   onVaultSignOut,
+  onVaultLock,
   onVaultChangePin,
   onBackupNow,
   onToggleAutoBackup,
@@ -712,14 +714,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => onVaultSignOut()}
-                  className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-bold flex items-center gap-1 active:scale-95 transition shrink-0"
-                >
-                  <LogOut className="w-3 h-3" />
-                  Sign Out
-                </button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {onVaultLock && (
+                    <button
+                      type="button"
+                      onClick={() => onVaultLock()}
+                      className="px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 text-[10px] font-bold flex items-center gap-1 active:scale-95 transition"
+                      title="অ্যাপ এখনই লক করুন (Lock App)"
+                    >
+                      <Lock className="w-3 h-3 text-amber-600" />
+                      লক করুন
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => onVaultSignOut()}
+                    className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-bold flex items-center gap-1 active:scale-95 transition"
+                    title="ভল্ট থেকে সাইন আউট করুন"
+                  >
+                    <LogOut className="w-3 h-3" />
+                    Sign Out
+                  </button>
+                </div>
               </div>
 
               {/* Biometric Integration Card */}

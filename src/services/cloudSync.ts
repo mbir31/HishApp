@@ -2,11 +2,11 @@
  * HISAPP — CLOUD SYNC RULES (PURE)
  * ─────────────────────────────────────────────────────────────────
  * Pure, side-effect-free rules shared by the local IndexedDB layer and the
- * Realtime Database sync engine:
+ * Cloud Firestore sync engine:
  *
- *   • record normalization — Realtime Database drops empty arrays and null
- *     fields, so every record read from the cloud is restored to the exact
- *     shape the app expects before it is compared or stored;
+ *   • record normalization — Cloud Firestore stores structured documents; every
+ *     record read from the cloud is normalized to the exact shape the app expects
+ *     before it is compared or stored;
  *   • versions & fingerprints — each record has ONE deterministic winner rule
  *     (higher version, then larger fingerprint). Every device applies the same
  *     rule, so all devices converge on identical data without coordination;
@@ -37,7 +37,7 @@ export type SyncKind = 'entry' | 'settlement' | 'profile' | 'audit';
 
 const asArray = <T = unknown>(value: unknown): T[] => {
   if (Array.isArray(value)) return value as T[];
-  // Realtime Database returns integer-keyed objects for sparse arrays.
+  // Handle integer-keyed objects for sparse arrays.
   if (value && typeof value === 'object') return Object.values(value as Record<string, T>);
   return [];
 };
@@ -219,7 +219,7 @@ export function isSyncLedgerDataEmpty(data: Partial<SyncLedgerData> | null | und
   );
 }
 
-/** Equality that ignores record-array order, as Realtime Database object order is unspecified. */
+/** Equality that ignores record-array order when comparing ledger states. */
 export function syncLedgerDataEqual(
   left: Partial<SyncLedgerData> | null | undefined,
   right: Partial<SyncLedgerData> | null | undefined

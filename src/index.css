@@ -326,43 +326,38 @@
   pointer-events: none;
 }
 
-/* 3D Luxury Dark Frosted Glass Dock */
+/* 3D Dark / Black Frosted Glassmorphism Dock */
 .bottom-nav__dock.ios-glass-nav.bottom-nav__dock--dark {
-  background-color: rgba(9, 13, 22, 0.76);
+  background-color: rgba(10, 14, 24, 0.55);
   background-image:
     radial-gradient(
-      130% 90% at 50% 0%,
-      rgba(255, 255, 255, 0.18) 0%,
-      rgba(255, 255, 255, 0.04) 50%,
-      rgba(255, 255, 255, 0) 70%
-    ),
-    radial-gradient(
-      100% 70% at 50% 100%,
-      rgba(0, 0, 0, 0.65) 0%,
-      rgba(0, 0, 0, 0) 80%
+      120% 80% at 50% 0%,
+      rgba(255, 255, 255, 0.16) 0%,
+      rgba(255, 255, 255, 0.03) 45%,
+      transparent 70%
     ),
     linear-gradient(
       180deg,
-      rgba(28, 38, 56, 0.68) 0%,
-      rgba(13, 20, 36, 0.8) 52%,
-      rgba(2, 6, 19, 0.92) 100%
+      rgba(25, 34, 52, 0.45) 0%,
+      rgba(12, 17, 30, 0.58) 50%,
+      rgba(5, 8, 16, 0.72) 100%
     );
-  -webkit-backdrop-filter: blur(36px) saturate(220%) contrast(108%);
-  backdrop-filter: blur(36px) saturate(220%) contrast(108%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%) contrast(102%);
+  backdrop-filter: blur(28px) saturate(200%) contrast(102%);
   border: 1px solid rgba(255, 255, 255, 0.22);
   box-shadow:
-    /* Top rim specular light reflection (gives authentic 3D sculpted feel) */
-    inset 0 1.5px 0.5px rgba(255, 255, 255, 0.65),
+    /* Top rim specular light reflection (gives authentic 3D sculpted glass edge) */
+    inset 0 1.5px 0.5px rgba(255, 255, 255, 0.6),
     /* 3D internal curved glass bevel highlight */
-    inset 0 4px 14px rgba(255, 255, 255, 0.12),
+    inset 0 4px 16px rgba(255, 255, 255, 0.08),
     /* Bottom ambient occlusion groove */
-    inset 0 -2.5px 6px rgba(0, 0, 0, 0.75),
+    inset 0 -2px 5px rgba(0, 0, 0, 0.45),
     /* Ultra-fine perimeter depth contour */
     inset 0 0 0 1px rgba(255, 255, 255, 0.08),
     /* Layered 3D floating shadows */
-    0 32px 64px -12px rgba(0, 0, 0, 0.85),
-    0 16px 32px -8px rgba(0, 0, 0, 0.62),
-    0 4px 12px rgba(0, 0, 0, 0.45);
+    0 24px 48px -10px rgba(0, 0, 0, 0.5),
+    0 12px 24px -6px rgba(0, 0, 0, 0.35),
+    0 4px 10px rgba(0, 0, 0, 0.25);
 }
 
 .bottom-nav__dock--dark::before {
