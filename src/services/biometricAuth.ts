@@ -13,7 +13,9 @@
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { getFirestoreDb } from '../config/firebase';
 import {
+  cacheVaultMeta,
   generateSalt,
+  getCachedVaultMeta,
   hashPinStretched,
   isValidPin,
   PIN_HASH_VERSION,
@@ -177,31 +179,68 @@ export async function loginWithBiometric(phone: string): Promise<VaultSession> {
     throw new Error('Biometric verification failed.');
   }
 
-  const db = getFirestoreDb();
-  const vaultRef = doc(db, 'vaults', phone);
-  const snapshot = await getDoc(vaultRef);
-
-  if (!snapshot.exists()) {
-    throw new Error('Cloud vault not found. Please log in with your 4-digit PIN first.');
-  }
-
-  const data = snapshot.data() as VaultMetadata;
   const now = Date.now();
+  const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+
+  if (!isOnline) {
+    const cached = getCachedVaultMeta(phone);
+    if (cached) {
+      const session: VaultSession = {
+        phoneNumber: phone,
+        pinHash: cached.pinHash,
+        isNew: false,
+        loggedInAt: now,
+      };
+      storeVaultSession(session);
+      return session;
+    }
+  }
 
   try {
-    await updateDoc(vaultRef, { lastLoginAt: now });
-  } catch {
-    // non-fatal
-  }
+    const db = getFirestoreDb();
+    const vaultRef = doc(db, 'vaults', phone);
+    const snapshot = await getDoc(vaultRef);
 
-  const session: VaultSession = {
-    phoneNumber: phone,
-    pinHash: data.pinHash,
-    isNew: false,
-    loggedInAt: now,
-  };
-  storeVaultSession(session);
-  return session;
+    if (!snapshot.exists()) {
+      throw new Error('Cloud vault not found. Please log in with your 4-digit PIN first.');
+    }
+
+    const data = snapshot.data() as VaultMetadata;
+    cacheVaultMeta(phone, {
+      pinHash: data.pinHash,
+      salt: data.salt,
+      hashVersion: data.hashVersion,
+    });
+
+    try {
+      await updateDoc(vaultRef, { lastLoginAt: now });
+    } catch {
+      // non-fatal
+    }
+
+    const session: VaultSession = {
+      phoneNumber: phone,
+      pinHash: data.pinHash,
+      isNew: false,
+      loggedInAt: now,
+    };
+    storeVaultSession(session);
+    return session;
+  } catch (err: any) {
+    // If network or Firestore fetch failed, fall back to locally cached credentials
+    const cached = getCachedVaultMeta(phone);
+    if (cached) {
+      const session: VaultSession = {
+        phoneNumber: phone,
+        pinHash: cached.pinHash,
+        isNew: false,
+        loggedInAt: now,
+      };
+      storeVaultSession(session);
+      return session;
+    }
+    throw err;
+  }
 }
 
 /**

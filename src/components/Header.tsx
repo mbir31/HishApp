@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Cloud, CloudOff, LogIn, RefreshCw, Settings, ShieldAlert, Wifi, WifiOff } from 'lucide-react';
 import { ClinicSettings } from '../types';
 import type { BackupStatus } from '../services/backupEngine';
-import { InstallAppButton } from './InstallAppButton';
 
 interface HeaderProps {
   settings: ClinicSettings;
@@ -201,10 +200,8 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Right: Install App, Backup Pill, Last Sync Text, Online Pill, Settings Button */}
+        {/* Right: Backup Pill, Last Sync Text, Online Pill, Settings Button */}
         <div className="flex items-center gap-2 shrink-0">
-          <InstallAppButton />
-
           {/* Live Online/Offline Status Pill */}
           <div
             className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border backdrop-blur-md transition-colors ${

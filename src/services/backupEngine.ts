@@ -262,14 +262,18 @@ class BackupEngine {
         },
       });
 
-      // Flush local records to newly opened vault
-      await this.syncSession.flush();
-      void this.syncSession.saveSnapshot();
+      // Flush local records to newly opened vault (graceful fallback if offline)
+      try {
+        await this.syncSession.flush();
+        void this.syncSession.saveSnapshot();
+      } catch {
+        // Safe to ignore when offline; pending items remain in outbox
+      }
       void captureEmergencyLocalSnapshot();
 
       crossTabSync.notifySessionChanged(session.phoneNumber);
 
-      this.phase = 'synced';
+      this.phase = this.pendingCount > 0 ? 'syncing' : 'synced';
       this.emit();
       return session;
     } catch (err: any) {
@@ -322,13 +326,17 @@ class BackupEngine {
         },
       });
 
-      await this.syncSession.flush();
-      void this.syncSession.saveSnapshot();
+      try {
+        await this.syncSession.flush();
+        void this.syncSession.saveSnapshot();
+      } catch {
+        // Safe to ignore when offline; pending items remain in outbox
+      }
       void captureEmergencyLocalSnapshot();
 
       crossTabSync.notifySessionChanged(session.phoneNumber);
 
-      this.phase = 'synced';
+      this.phase = this.pendingCount > 0 ? 'syncing' : 'synced';
       this.emit();
       return session;
     } catch (err: any) {

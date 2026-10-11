@@ -1,12 +1,32 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { beforeEach, test } from 'node:test';
 import {
+  cacheVaultMeta,
   cleanPhoneNumber,
   generateSalt,
+  getCachedVaultMeta,
   hashPin,
+  hashPinStretched,
   isValidPhoneNumber,
   isValidPin,
+  loginOrCreateVault,
+  PIN_HASH_VERSION,
 } from '../src/services/vaultAuth';
+
+// Mock localStorage for node:test environment
+const mockStorage = new Map<string, string>();
+const fakeLocalStorage = {
+  getItem: (k: string) => mockStorage.get(k) ?? null,
+  setItem: (k: string, v: string) => mockStorage.set(k, String(v)),
+  removeItem: (k: string) => mockStorage.delete(k),
+  clear: () => mockStorage.clear(),
+};
+
+(globalThis as any).localStorage = fakeLocalStorage;
+
+beforeEach(() => {
+  mockStorage.clear();
+});
 
 test('cleanPhoneNumber strips spaces, dashes and non-numeric characters', () => {
   assert.equal(cleanPhoneNumber('01712-345678'), '01712345678');
@@ -60,4 +80,49 @@ test('hashPin produces different hashes for different salts', async () => {
   const hash1 = await hashPin('1234', 'salt_alpha');
   const hash2 = await hashPin('1234', 'salt_beta');
   assert.notEqual(hash1, hash2);
+});
+
+test('cacheVaultMeta stores credentials and getCachedVaultMeta retrieves them', () => {
+  const phone = '01712345678';
+  const salt = 'testsalt12345678';
+  const pinHash = 'testhashvalue';
+
+  cacheVaultMeta(phone, { pinHash, salt, hashVersion: PIN_HASH_VERSION });
+  const retrieved = getCachedVaultMeta(phone);
+
+  assert.ok(retrieved);
+  assert.equal(retrieved.pinHash, pinHash);
+  assert.equal(retrieved.salt, salt);
+  assert.equal(retrieved.hashVersion, PIN_HASH_VERSION);
+});
+
+test('loginOrCreateVault unlocks using locally cached credentials when offline', async () => {
+  const phone = '01899887766';
+  const pin = '4321';
+  const salt = generateSalt();
+  const pinHash = await hashPinStretched(pin, salt);
+
+  cacheVaultMeta(phone, { pinHash, salt, hashVersion: PIN_HASH_VERSION });
+
+  // In test environment without Firebase config or offline, cached unlock succeeds
+  const session = await loginOrCreateVault(phone, pin);
+  assert.equal(session.phoneNumber, phone);
+  assert.equal(session.pinHash, pinHash);
+  assert.equal(session.isNew, false);
+});
+
+test('loginOrCreateVault rejects incorrect PIN even when using cached fallback', async () => {
+  const phone = '01899887766';
+  const pin = '4321';
+  const salt = generateSalt();
+  const pinHash = await hashPinStretched(pin, salt);
+
+  cacheVaultMeta(phone, { pinHash, salt, hashVersion: PIN_HASH_VERSION });
+
+  await assert.rejects(
+    async () => {
+      await loginOrCreateVault(phone, '9999');
+    },
+    { message: /Incorrect PIN/ }
+  );
 });

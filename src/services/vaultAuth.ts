@@ -24,12 +24,55 @@ import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { getFirestoreDb, isFirebaseConfigured } from '../config/firebase';
 
 const SESSION_KEY = 'hisapp_vault_session';
+const CACHED_VAULT_META_PREFIX = 'hisapp_vault_meta_';
 
 export interface VaultSession {
   phoneNumber: string;
   pinHash: string;
   isNew?: boolean;
   loggedInAt: number;
+}
+
+export interface CachedVaultCredentials {
+  pinHash: string;
+  salt: string;
+  hashVersion?: number;
+  cachedAt?: number;
+}
+
+/** Retrieve locally cached vault credentials for offline morning unlock */
+export function getCachedVaultMeta(phone: string): CachedVaultCredentials | null {
+  if (typeof localStorage === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(`${CACHED_VAULT_META_PREFIX}${cleanPhoneNumber(phone)}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CachedVaultCredentials;
+    if (parsed && typeof parsed.pinHash === 'string' && typeof parsed.salt === 'string') {
+      return parsed;
+    }
+  } catch {
+    // ignore parse error
+  }
+  return null;
+}
+
+/** Cache vault credentials locally so users can unlock offline when internet is unavailable */
+export function cacheVaultMeta(
+  phone: string,
+  meta: Pick<VaultMetadata, 'pinHash' | 'salt' | 'hashVersion'>
+): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    const payload: CachedVaultCredentials = {
+      pinHash: meta.pinHash,
+      salt: meta.salt,
+      hashVersion: meta.hashVersion,
+      cachedAt: Date.now(),
+    };
+    localStorage.setItem(`${CACHED_VAULT_META_PREFIX}${cleanPhoneNumber(phone)}`, JSON.stringify(payload));
+  } catch {
+    // ignore quota error
+  }
 }
 
 export interface VaultMetadata {
@@ -182,15 +225,14 @@ export function timingSafeEqualHex(a: string, b: string): boolean {
 /**
  * Log into an existing vault or automatically provision a new secured vault
  * on first login with the 11-digit number and 4-digit PIN.
+ *
+ * Supports offline unlock: if internet is unreachable or Firebase is offline,
+ * verifies PIN against locally cached credentials previously stored on this device.
  */
 export async function loginOrCreateVault(
   rawPhone: string,
   rawPin: string
 ): Promise<VaultSession> {
-  if (!isFirebaseConfigured()) {
-    throw new Error('Firebase configuration is missing or incomplete.');
-  }
-
   const phone = cleanPhoneNumber(rawPhone);
   if (!isValidPhoneNumber(phone)) {
     throw new Error('Please enter a valid 11-digit mobile number.');
@@ -201,83 +243,146 @@ export async function loginOrCreateVault(
     throw new Error('PIN must be exactly 4 digits.');
   }
 
-  const db = getFirestoreDb();
-  const vaultRef = doc(db, 'vaults', phone);
-  const snapshot = await getDoc(vaultRef);
-
   const now = Date.now();
+  const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+  const configured = isFirebaseConfigured();
 
-  if (!snapshot.exists()) {
-    // First-time registration: Create secured cloud vault
-    const salt = generateSalt();
-    const pinHash = await hashPinStretched(pin, salt);
+  // If offline or Firebase is not configured, attempt local cached hash unlock
+  if (!isOnline || !configured) {
+    const cached = getCachedVaultMeta(phone);
+    if (cached) {
+      const { valid } = await verifyVaultPin(pin, cached);
+      if (!valid) {
+        throw new Error('Incorrect PIN. Please enter your valid 4-digit secret PIN.');
+      }
+      const session: VaultSession = {
+        phoneNumber: phone,
+        pinHash: cached.pinHash,
+        isNew: false,
+        loggedInAt: now,
+      };
+      storeVaultSession(session);
+      return session;
+    }
+    if (!configured) {
+      throw new Error('Firebase configuration is missing or incomplete.');
+    }
+    throw new Error('Device is offline. Please connect to the internet once to unlock this vault.');
+  }
 
-    const vaultData: VaultMetadata = {
-      phone,
+  try {
+    const db = getFirestoreDb();
+    const vaultRef = doc(db, 'vaults', phone);
+    const snapshot = await getDoc(vaultRef);
+
+    if (!snapshot.exists()) {
+      // First-time registration: Create secured cloud vault
+      const salt = generateSalt();
+      const pinHash = await hashPinStretched(pin, salt);
+
+      const vaultData: VaultMetadata = {
+        phone,
+        pinHash,
+        salt,
+        hashVersion: PIN_HASH_VERSION,
+        createdAt: now,
+        updatedAt: now,
+        lastLoginAt: now,
+      };
+
+      await setDoc(vaultRef, vaultData);
+      cacheVaultMeta(phone, vaultData);
+
+      const session: VaultSession = {
+        phoneNumber: phone,
+        pinHash,
+        isNew: true,
+        loggedInAt: now,
+      };
+      storeVaultSession(session);
+      return session;
+    }
+
+    // Existing vault: Verify PIN
+    const data = snapshot.data() as VaultMetadata;
+    const { valid, needsUpgrade } = await verifyVaultPin(pin, data);
+
+    if (!valid) {
+      throw new Error('Incorrect PIN. Please enter your valid 4-digit secret PIN.');
+    }
+
+    let pinHash = data.pinHash;
+    let currentSalt = data.salt;
+    let currentVersion = data.hashVersion;
+
+    // Legacy vaults are re-hashed to the stretched scheme on this successful
+    // login, so an old vault becomes brute-force resistant without the doctor
+    // having to do anything.
+    const patch: Record<string, unknown> = { lastLoginAt: now };
+    if (needsUpgrade) {
+      try {
+        const upgradedSalt = generateSalt();
+        const upgradedHash = await hashPinStretched(pin, upgradedSalt);
+        patch.pinHash = upgradedHash;
+        patch.salt = upgradedSalt;
+        patch.hashVersion = PIN_HASH_VERSION;
+        patch.updatedAt = now;
+        pinHash = upgradedHash;
+        currentSalt = upgradedSalt;
+        currentVersion = PIN_HASH_VERSION;
+      } catch (err) {
+        // Keep the working v1 hash rather than locking the vault out.
+        console.warn('Could not upgrade the vault PIN hash yet:', err);
+      }
+    }
+
+    // Cache vault credentials locally for fast & offline morning unlock
+    cacheVaultMeta(phone, {
       pinHash,
-      salt,
-      hashVersion: PIN_HASH_VERSION,
-      createdAt: now,
-      updatedAt: now,
-      lastLoginAt: now,
-    };
+      salt: currentSalt,
+      hashVersion: currentVersion,
+    });
 
-    await setDoc(vaultRef, vaultData);
+    // Update last login timestamp in Firestore
+    try {
+      await updateDoc(vaultRef, patch);
+    } catch {
+      // non-fatal if offline
+    }
 
     const session: VaultSession = {
       phoneNumber: phone,
       pinHash,
-      isNew: true,
+      isNew: false,
       loggedInAt: now,
     };
     storeVaultSession(session);
     return session;
-  }
-
-  // Existing vault: Verify PIN
-  const data = snapshot.data() as VaultMetadata;
-  const { valid, needsUpgrade } = await verifyVaultPin(pin, data);
-
-  if (!valid) {
-    throw new Error('Incorrect PIN. Please enter your valid 4-digit secret PIN.');
-  }
-
-  let pinHash = data.pinHash;
-
-  // Legacy vaults are re-hashed to the stretched scheme on this successful
-  // login, so an old vault becomes brute-force resistant without the doctor
-  // having to do anything.
-  const patch: Record<string, unknown> = { lastLoginAt: now };
-  if (needsUpgrade) {
-    try {
-      const upgradedSalt = generateSalt();
-      const upgradedHash = await hashPinStretched(pin, upgradedSalt);
-      patch.pinHash = upgradedHash;
-      patch.salt = upgradedSalt;
-      patch.hashVersion = PIN_HASH_VERSION;
-      patch.updatedAt = now;
-      pinHash = upgradedHash;
-    } catch (err) {
-      // Keep the working v1 hash rather than locking the vault out.
-      console.warn('Could not upgrade the vault PIN hash yet:', err);
+  } catch (err: any) {
+    // If the PIN was incorrect, propagate that error directly
+    if (err?.message?.includes('Incorrect PIN')) {
+      throw err;
     }
-  }
 
-  // Update last login timestamp in Firestore
-  try {
-    await updateDoc(vaultRef, patch);
-  } catch {
-    // non-fatal if offline
-  }
+    // Network / Firestore error: Fallback to cached vault credentials
+    const cached = getCachedVaultMeta(phone);
+    if (cached) {
+      const { valid } = await verifyVaultPin(pin, cached);
+      if (!valid) {
+        throw new Error('Incorrect PIN. Please enter your valid 4-digit secret PIN.');
+      }
+      const session: VaultSession = {
+        phoneNumber: phone,
+        pinHash: cached.pinHash,
+        isNew: false,
+        loggedInAt: now,
+      };
+      storeVaultSession(session);
+      return session;
+    }
 
-  const session: VaultSession = {
-    phoneNumber: phone,
-    pinHash,
-    isNew: false,
-    loggedInAt: now,
-  };
-  storeVaultSession(session);
-  return session;
+    throw err;
+  }
 }
 
 /**
@@ -322,6 +427,13 @@ export async function changeVaultPin(
     salt: newSalt,
     hashVersion: PIN_HASH_VERSION,
     updatedAt: Date.now(),
+  });
+
+  // Keep local cached meta in sync
+  cacheVaultMeta(phone, {
+    pinHash: newPinHash,
+    salt: newSalt,
+    hashVersion: PIN_HASH_VERSION,
   });
 
   // Update local session
