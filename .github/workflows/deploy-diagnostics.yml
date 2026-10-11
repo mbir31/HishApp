@@ -33,3 +33,53 @@ jobs:
           message = message.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
           print(f'::notice title=Previous Firebase deployment error::{message}')
           PY
+
+      - uses: actions/checkout@v6
+
+      - name: Authenticate for a read-only permission check
+        id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          token_format: access_token
+          create_credentials_file: false
+
+      - name: Check Firebase deployment permissions without changing IAM
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          permissions = [
+              'serviceusage.services.get',
+              'serviceusage.services.use',
+              'serviceusage.services.enable',
+              'firebaserules.rulesets.create',
+              'firebaserules.rulesets.get',
+              'firebaserules.rulesets.list',
+              'firebaserules.releases.create',
+              'firebaserules.releases.update',
+              'firebaserules.releases.get',
+              'resourcemanager.projects.get',
+              'resourcemanager.projects.getIamPolicy',
+              'resourcemanager.projects.setIamPolicy',
+              'datastore.databases.get',
+              'datastore.databases.list',
+              'firebase.projects.get',
+          ]
+          request = urllib.request.Request(
+              'https://cloudresourcemanager.googleapis.com/v1/projects/hishapp1:testIamPermissions',
+              data=json.dumps({'permissions': permissions}).encode(),
+              headers={
+                  'Authorization': f"Bearer {os.environ['ACCESS_TOKEN']}",
+                  'Content-Type': 'application/json',
+              },
+          )
+          with urllib.request.urlopen(request) as response:
+              granted = set(json.load(response).get('permissions', []))
+          print('::notice title=Granted Firebase permissions::' + ', '.join(sorted(granted)))
+          print('::notice title=Missing Firebase permissions::' + ', '.join(sorted(set(permissions) - granted)))
+          PY
