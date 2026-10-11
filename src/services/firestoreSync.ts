@@ -540,14 +540,16 @@ export async function reconcileVaultRecords(phoneNumber: string): Promise<Reconc
 
   let healedCount = 0;
   const batch = writeBatch(db);
-  let batchItemsCount = 0;
+  // Counted per kind: the reported cloud totals must not mix visits and batches.
+  let pushedEntries = 0;
+  let pushedSettlements = 0;
 
   // 1. Check local entries that are missing remotely -> push to Firestore
   for (const entry of localEntries) {
     if (!remoteEntryMap.has(entry.id)) {
       const docRef = doc(db, 'vaults', phoneNumber, COLLECTIONS.entry, entry.id);
       batch.set(docRef, cleanForFirestore(entry), { merge: true });
-      batchItemsCount++;
+      pushedEntries++;
       healedCount++;
     }
   }
@@ -557,12 +559,12 @@ export async function reconcileVaultRecords(phoneNumber: string): Promise<Reconc
     if (!remoteSettlementMap.has(settlement.settlementId)) {
       const docRef = doc(db, 'vaults', phoneNumber, COLLECTIONS.settlement, settlement.settlementId);
       batch.set(docRef, cleanForFirestore(settlement), { merge: true });
-      batchItemsCount++;
+      pushedSettlements++;
       healedCount++;
     }
   }
 
-  if (batchItemsCount > 0) {
+  if (pushedEntries + pushedSettlements > 0) {
     await batch.commit();
   }
 
@@ -596,9 +598,9 @@ export async function reconcileVaultRecords(phoneNumber: string): Promise<Reconc
 
   return {
     localEntries: finalLocalEntries,
-    remoteEntries: remoteEntryMap.size + batchItemsCount,
+    remoteEntries: remoteEntryMap.size + pushedEntries,
     localSettlements: finalLocalSettlements,
-    remoteSettlements: remoteSettlementMap.size + batchItemsCount,
+    remoteSettlements: remoteSettlementMap.size + pushedSettlements,
     healedCount,
     status: healedCount > 0 ? 'healed' : 'perfect-parity',
     checkedAt: Date.now(),

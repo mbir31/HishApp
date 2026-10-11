@@ -3,20 +3,14 @@ import {
   X,
   ShieldAlert,
   Search,
-  Filter,
   Download,
-  Calendar,
   ChevronDown,
   ChevronUp,
   Clock,
-  Trash2,
-  FileText,
-  Activity,
-  CheckCircle2,
   RotateCcw,
 } from 'lucide-react';
 import { AuditLogEntry, PatientEntry } from '../types';
-import { getAllAuditLogs, clearAuditLogs, restorePatientEntry } from '../db/indexedDB';
+import { getAllAuditLogs, restorePatientEntry } from '../db/indexedDB';
 import { backupEngine } from '../services/backupEngine';
 
 interface AuditLogModalProps {

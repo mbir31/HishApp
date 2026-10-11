@@ -5,13 +5,6 @@ import {
   Printer,
   X,
   Calendar,
-  Users,
-  Coins,
-  Scale,
-  CheckCircle2,
-  TrendingUp,
-  AlertCircle,
-  Building2,
 } from 'lucide-react';
 import { ClinicSettings, PatientEntry, Settlement } from '../types';
 import { exportMonthlySummaryPDF, generateMonthlySummaryData } from '../utils/pdfExport';

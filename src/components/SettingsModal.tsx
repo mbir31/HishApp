@@ -40,6 +40,11 @@ import {
   parseJSONBackup,
 } from '../utils/importData';
 import { backupEngine, type BackupStatus } from '../services/backupEngine';
+import {
+  getRememberedUserId,
+  getRememberUserPreference,
+  recordUnlockSuccess,
+} from '../services/appLockService';
 import type { DualStoreHealth } from '../services/emergencyBackup';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import { AuditLogModal } from './AuditLogModal';
@@ -100,13 +105,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [phoneInput, setPhoneInput] = useState<string>('');
   const [pinInput, setPinInput] = useState<string>('');
   const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
-  const [rememberPhone, setRememberPhone] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('hisapp_remember_phone') !== 'false';
-    } catch {
-      return true;
-    }
-  });
+  // Shares one store with the login screen (appLockService). Writing a second,
+  // parallel key here left the two screens disagreeing about the saved number.
+  const [rememberPhone, setRememberPhone] = useState<boolean>(() => getRememberUserPreference());
 
   // Biometric state
   const [hasBiometricSupport, setHasBiometricSupport] = useState<boolean>(false);
@@ -140,14 +141,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   // Load saved phone if remembered
   useEffect(() => {
     isBiometricAvailable().then(setHasBiometricSupport);
-    try {
-      const savedPhone = localStorage.getItem('hisapp_saved_phone');
-      if (savedPhone) {
-        setPhoneInput(savedPhone);
-      }
-    } catch {
-      // ignore storage error
-    }
+    const savedPhone = getRememberedUserId();
+    if (savedPhone) setPhoneInput(savedPhone);
   }, []);
 
   // Sync biometric enrollment status for current target phone
@@ -191,14 +186,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     try {
       const session = await onVaultLogin(cleanPhone, cleanPin);
 
-      // Handle remember phone preference
-      if (rememberPhone) {
-        localStorage.setItem('hisapp_saved_phone', cleanPhone);
-        localStorage.setItem('hisapp_remember_phone', 'true');
-      } else {
-        localStorage.removeItem('hisapp_saved_phone');
-        localStorage.setItem('hisapp_remember_phone', 'false');
-      }
+      // One unlock record for both this modal and the lock screen.
+      recordUnlockSuccess(cleanPhone, rememberPhone);
 
       showToast(
         session.isNew ? 'New Cloud Vault created!' : 'Cloud Vault unlocked!',
@@ -223,9 +212,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setIsBiometricLoading(true);
     try {
       await onVaultBiometricLogin(cleanPhone);
-      if (rememberPhone) {
-        localStorage.setItem('hisapp_saved_phone', cleanPhone);
-      }
+      recordUnlockSuccess(cleanPhone, true);
       showToast('Biometric Login Successful!', `Vault ID: ${cleanPhone}`, 'success');
       setPinInput('');
     } catch (err: any) {

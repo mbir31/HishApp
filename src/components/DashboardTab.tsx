@@ -4,13 +4,7 @@ import {
   Calendar,
   AlertCircle,
   Users,
-  ArrowUpRight,
   ChevronRight,
-  Sparkles,
-  CheckCircle2,
-  Clock,
-  PlusCircle,
-  Scale,
   BarChart3,
   Medal,
 } from 'lucide-react';
