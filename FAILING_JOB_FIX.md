@@ -41,7 +41,10 @@ the IAM failure.
 - Pin the Admin SDK in the lockfile as a development dependency. It is not
   imported by the browser application or included in its production bundle.
 - Use Node 24 with current checkout/setup-node actions and strict `npm ci`.
-  `.npmrc` already supplies the lockfile's `legacy-peer-deps` setting.
+  Regenerate the lockfile with Node 24/npm 11 and no existing `node_modules` so
+  optional native packages for all platforms are included. The old install
+  fallback masked missing entries that npm 11 rejects with `EUSAGE`.
+  `.npmrc` supplies the lockfile's `legacy-peer-deps` setting.
 - Validate type-checks, regression tests, and the production build on pull
   requests. Deployment tooling is included in the TypeScript check.
 
