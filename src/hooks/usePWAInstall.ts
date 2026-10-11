@@ -19,19 +19,28 @@ export function usePWAInstall() {
       (window.navigator as unknown as { standalone?: boolean }).standalone === true
     );
   });
-  const [isIOS, setIsIOS] = useState<boolean>(() => {
+  const [isIOS] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     const userAgent = window.navigator.userAgent.toLowerCase();
     return /iphone|ipad|ipod/.test(userAgent);
   });
 
   useEffect(() => {
-    // Detect standalone mode (already installed)
+    // Detect standalone mode (already installed). The persisted flag is OR-ed
+    // in, not overwritten: iOS has no `appinstalled` event, so a doctor who
+    // confirmed the manual "Add to Home Screen" flow must stay marked as
+    // installed across reloads.
     const checkStandalone = () => {
       const isStandalone =
         window.matchMedia('(display-mode: standalone)').matches ||
         (window.navigator as unknown as { standalone?: boolean }).standalone === true;
-      setIsInstalled(isStandalone);
+      let markedManually = false;
+      try {
+        markedManually = localStorage.getItem('hisapp_pwa_installed') === 'true';
+      } catch {
+        // ignore
+      }
+      setIsInstalled(isStandalone || markedManually);
     };
 
     checkStandalone();
@@ -89,6 +98,5 @@ export function usePWAInstall() {
     isIOS,
     install,
     markInstalled,
-    hasPrompt: !!deferredPrompt,
   };
 }

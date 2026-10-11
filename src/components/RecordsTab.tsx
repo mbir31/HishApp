@@ -1,26 +1,20 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Search,
-  Filter,
   Calendar,
   Edit3,
   Trash2,
-  CheckCircle2,
   Clock,
   User,
   Users,
-  Coins,
-  FileText,
   X,
   Save,
   History,
   ShieldAlert,
   ChevronRight,
-  Activity,
-  Layers,
 } from 'lucide-react';
 import { ClinicSettings, PatientEntry, PatientProfile } from '../types';
-import { deletePatientEntry, savePatientEntry, getAllPatientProfiles } from '../db/indexedDB';
+import { deletePatientEntry, savePatientEntry } from '../db/indexedDB';
 import { PatientHistoryModal } from './PatientHistoryModal';
 import { DeleteConfirmationModal } from './DeleteConfirmationModal';
 import { AuditLogModal } from './AuditLogModal';
@@ -55,13 +49,6 @@ export const RecordsTab: React.FC<RecordsTabProps> = ({
   const [isDateFilterEnabled, setIsDateFilterEnabled] = useState<boolean>(false);
   const [editingEntry, setEditingEntry] = useState<PatientEntry | null>(null);
 
-  // Stored profiles from database
-  const [profiles, setProfiles] = useState<PatientProfile[]>([]);
-
-  useEffect(() => {
-    getAllPatientProfiles().then(setProfiles);
-  }, [entries]);
-
   // Deletion confirmation modal state
   const [entryToDelete, setEntryToDelete] = useState<PatientEntry | null>(null);
 
@@ -83,40 +70,9 @@ export const RecordsTab: React.FC<RecordsTabProps> = ({
     return map;
   }, [entries]);
 
-  // Dynamic profiles list combining indexed profiles + any entries not yet indexed
+  // Patient dossiers are derived straight from the visit ledger, so the list
+  // can never drift from the entries actually on screen.
   const dynamicProfiles = useMemo(() => {
-    const profileMap = new Map<string, PatientProfile>();
-
-    // Seed from indexed profiles
-    profiles.forEach((p) => {
-      profileMap.set(p.name.trim().toLowerCase(), { ...p });
-    });
-
-    // Recompute accurately from current entries
-    entries.forEach((e) => {
-      const key = (e.patientName || '').trim().toLowerCase();
-      if (!key) return;
-
-      if (!profileMap.has(key)) {
-        profileMap.set(key, {
-          id: key,
-          name: e.patientName.trim(),
-          totalVisits: 1,
-          totalBilled: e.receivedAmount,
-          totalDoctorShare: e.doctorShare,
-          firstVisitDate: e.date,
-          lastVisitDate: e.date,
-          procedures: [e.procedure],
-          createdAt: e.createdAt,
-          updatedAt: e.updatedAt,
-        });
-      } else {
-        const existing = profileMap.get(key)!;
-        // Count from scratch if needed or use entry details
-      }
-    });
-
-    // Recalculate true stats directly from entries for maximum consistency
     const grouped = new Map<string, PatientEntry[]>();
     entries.forEach((e) => {
       const key = (e.patientName || '').trim().toLowerCase();
@@ -152,7 +108,7 @@ export const RecordsTab: React.FC<RecordsTabProps> = ({
     // Sort by last visit descending, then visits desc
     result.sort((a, b) => b.lastVisitDate.localeCompare(a.lastVisitDate) || b.totalVisits - a.totalVisits);
     return result;
-  }, [profiles, entries]);
+  }, [entries]);
 
   // Filtered profiles for profiles view
   const filteredProfiles = useMemo(() => {

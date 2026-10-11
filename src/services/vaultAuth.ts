@@ -7,9 +7,18 @@
  *   - 4-digit secret PIN (e.g., 1234)
  *
  * First login: Automatically provisions a secured Firestore data vault
- * for that 11-digit number with salted SHA-256 PIN hashing.
+ * for that 11-digit number with a salted, stretched PIN hash.
  * Subsequent logins: Verifies PIN on any device running the PWA.
  * PIN can be updated anytime by the user.
+ *
+ * PIN HASHING
+ * ───────────
+ * A 4-digit PIN has only 10,000 possible values, so a single fast hash is not
+ * enough: anyone who can read the vault document can brute-force it offline in
+ * milliseconds. Vaults are therefore hashed with PBKDF2-SHA256 at
+ * `PIN_HASH_ITERATIONS` rounds (v2). Vaults created before v2 still store a
+ * single-round SHA-256 (v1); those are still accepted so nobody is locked out,
+ * and the very next successful login transparently re-hashes them to v2.
  */
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { getFirestoreDb, isFirebaseConfigured } from '../config/firebase';
@@ -27,6 +36,11 @@ export interface VaultMetadata {
   phone: string;
   pinHash: string;
   salt: string;
+  /**
+   * PIN hash scheme. `1` (or missing) = single-round SHA-256 written by older
+   * builds; `2` = PBKDF2-SHA256 with `PIN_HASH_ITERATIONS` rounds.
+   */
+  hashVersion?: number;
   createdAt: number;
   updatedAt: number;
   lastLoginAt: number;
@@ -61,14 +75,34 @@ export function generateSalt(): string {
   return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 }
 
-/** Compute salted SHA-256 hash of the 4-digit PIN */
+/** PIN hash scheme written by every new vault and every PIN change. */
+export const PIN_HASH_VERSION = 2;
+
+/**
+ * PBKDF2 rounds for the v2 PIN hash. High enough that a 10,000-value PIN
+ * space cannot be swept offline in a useful time, low enough to stay
+ * imperceptible on a mid-range phone.
+ */
+export const PIN_HASH_ITERATIONS = 210_000;
+
+function toHex(buffer: ArrayBuffer): string {
+  return Array.from(new Uint8Array(buffer), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function hasSubtleCrypto(): boolean {
+  return typeof crypto !== 'undefined' && !!crypto.subtle;
+}
+
+/**
+ * Legacy v1 scheme: a single salted SHA-256 round. Kept ONLY so vaults written
+ * by older builds can still be verified; never used to hash a new PIN.
+ */
 export async function hashPin(pin: string, salt: string): Promise<string> {
   const input = `hisapp_v1_salt_${salt}_pin_${pin.trim()}`;
-  if (typeof crypto !== 'undefined' && crypto.subtle && crypto.subtle.digest) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(input);
+  if (hasSubtleCrypto() && crypto.subtle.digest) {
+    const data = new TextEncoder().encode(input);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    return Array.from(new Uint8Array(hashBuffer), (b) => b.toString(16).padStart(2, '0')).join('');
+    return toHex(hashBuffer);
   }
   // Fallback for non-subtle environments (e.g. Node tests if globalThis.crypto not available)
   let hash = 0;
@@ -77,6 +111,72 @@ export async function hashPin(pin: string, salt: string): Promise<string> {
     hash |= 0;
   }
   return `hash_${Math.abs(hash).toString(16).padStart(8, '0')}`;
+}
+
+/**
+ * Current v2 scheme: PBKDF2-SHA256 over the salt, hex encoded.
+ *
+ * Unlike `hashPin`, this deliberately has no weak fallback. Without
+ * `crypto.subtle` there is no way to stretch a 4-digit PIN safely, so hashing
+ * fails loudly instead of silently storing something reversible. Every context
+ * that can reach Firestore is a secure context, so `crypto.subtle` is present
+ * whenever a login can actually succeed.
+ */
+export async function hashPinStretched(pin: string, salt: string): Promise<string> {
+  if (!hasSubtleCrypto() || !crypto.subtle.importKey || !crypto.subtle.deriveBits) {
+    throw new Error(
+      'This browser does not expose the Web Crypto API, so the PIN cannot be secured. Open HishApp over HTTPS.'
+    );
+  }
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', encoder.encode(pin.trim()), 'PBKDF2', false, [
+    'deriveBits',
+  ]);
+  const bits = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      salt: encoder.encode(`hisapp_v2_${salt}`),
+      iterations: PIN_HASH_ITERATIONS,
+      hash: 'SHA-256',
+    },
+    key,
+    256
+  );
+  return toHex(bits);
+}
+
+/** Hash scheme recorded on a vault document. */
+export function pinHashVersionOf(meta: Pick<VaultMetadata, 'hashVersion'> | null | undefined): number {
+  const version = Number(meta?.hashVersion);
+  return version === PIN_HASH_VERSION ? PIN_HASH_VERSION : 1;
+}
+
+/**
+ * Verify a PIN against a stored vault document.
+ *
+ * `needsUpgrade` is true when the PIN matched a legacy v1 hash, so the caller
+ * can transparently re-hash it to v2 on this successful login.
+ */
+export async function verifyVaultPin(
+  pin: string,
+  meta: Pick<VaultMetadata, 'pinHash' | 'salt' | 'hashVersion'>
+): Promise<{ valid: boolean; needsUpgrade: boolean }> {
+  if (pinHashVersionOf(meta) === PIN_HASH_VERSION) {
+    const candidate = await hashPinStretched(pin, meta.salt);
+    return { valid: timingSafeEqualHex(candidate, meta.pinHash), needsUpgrade: false };
+  }
+  const candidate = await hashPin(pin, meta.salt);
+  return { valid: candidate === meta.pinHash, needsUpgrade: true };
+}
+
+/** Constant-time comparison so hash prefixes cannot be probed by timing. */
+export function timingSafeEqualHex(a: string, b: string): boolean {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
 }
 
 /**
@@ -110,12 +210,13 @@ export async function loginOrCreateVault(
   if (!snapshot.exists()) {
     // First-time registration: Create secured cloud vault
     const salt = generateSalt();
-    const pinHash = await hashPin(pin, salt);
+    const pinHash = await hashPinStretched(pin, salt);
 
     const vaultData: VaultMetadata = {
       phone,
       pinHash,
       salt,
+      hashVersion: PIN_HASH_VERSION,
       createdAt: now,
       updatedAt: now,
       lastLoginAt: now,
@@ -135,22 +236,43 @@ export async function loginOrCreateVault(
 
   // Existing vault: Verify PIN
   const data = snapshot.data() as VaultMetadata;
-  const candidateHash = await hashPin(pin, data.salt);
+  const { valid, needsUpgrade } = await verifyVaultPin(pin, data);
 
-  if (candidateHash !== data.pinHash) {
+  if (!valid) {
     throw new Error('Incorrect PIN. Please enter your valid 4-digit secret PIN.');
+  }
+
+  let pinHash = data.pinHash;
+
+  // Legacy vaults are re-hashed to the stretched scheme on this successful
+  // login, so an old vault becomes brute-force resistant without the doctor
+  // having to do anything.
+  const patch: Record<string, unknown> = { lastLoginAt: now };
+  if (needsUpgrade) {
+    try {
+      const upgradedSalt = generateSalt();
+      const upgradedHash = await hashPinStretched(pin, upgradedSalt);
+      patch.pinHash = upgradedHash;
+      patch.salt = upgradedSalt;
+      patch.hashVersion = PIN_HASH_VERSION;
+      patch.updatedAt = now;
+      pinHash = upgradedHash;
+    } catch (err) {
+      // Keep the working v1 hash rather than locking the vault out.
+      console.warn('Could not upgrade the vault PIN hash yet:', err);
+    }
   }
 
   // Update last login timestamp in Firestore
   try {
-    await updateDoc(vaultRef, { lastLoginAt: now });
+    await updateDoc(vaultRef, patch);
   } catch {
     // non-fatal if offline
   }
 
   const session: VaultSession = {
     phoneNumber: phone,
-    pinHash: data.pinHash,
+    pinHash,
     isNew: false,
     loggedInAt: now,
   };
@@ -185,19 +307,20 @@ export async function changeVaultPin(
   }
 
   const data = snapshot.data() as VaultMetadata;
-  const oldHash = await hashPin((rawOldPin || '').trim(), data.salt);
+  const { valid } = await verifyVaultPin((rawOldPin || '').trim(), data);
 
-  if (oldHash !== data.pinHash) {
+  if (!valid) {
     throw new Error('Current PIN is incorrect.');
   }
 
-  // Generate new salt and new hash
+  // Generate new salt and new hash — always on the current (stretched) scheme.
   const newSalt = generateSalt();
-  const newPinHash = await hashPin(newPin, newSalt);
+  const newPinHash = await hashPinStretched(newPin, newSalt);
 
   await updateDoc(vaultRef, {
     pinHash: newPinHash,
     salt: newSalt,
+    hashVersion: PIN_HASH_VERSION,
     updatedAt: Date.now(),
   });
 

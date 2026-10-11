@@ -3,11 +3,12 @@
  * ─────────────────────────────────────────────────────────────────
  * Two kinds of IndexedDB databases live on each device:
  *
- *   • DentalIncomeTrackerDB — device settings plus the "guest" ledger that
- *     exists before any Google account has ever been linked to the device.
- *   • HishAppLedger_<uid>   — one ledger per signed-in Google account. Records
- *     of one account can never be shown to, merged into, or uploaded for
- *     another account, and a sign-out keeps them safe on the device.
+ *   • DentalIncomeTrackerDB      — device settings plus the "guest" ledger that
+ *     exists before any Cloud Vault has ever been opened on the device.
+ *   • HishAppLedger_<phoneNumber> — one ledger per signed-in vault (the vault is
+ *     addressed by its 11-digit mobile number, held in `dataOwnerUid`). Records
+ *     of one vault can never be shown to, merged into, or uploaded for another,
+ *     and a sign-out keeps them safe on the device.
  *
  * Every ledger write runs in ONE transaction together with a row in the
  * persistent sync outbox (`sync_outbox`). The write and its "still needs to
@@ -42,7 +43,6 @@ export const LEDGER_LAYOUT_VERSION = 2;
 const LAYOUT_RECORD_KEY = 'ledger_layout';
 
 const OUTBOX_STORE = 'sync_outbox';
-const SYNC_META_STORE = 'sync_meta';
 const LEDGER_STORES = ['patient_entries', 'settlements', 'patient_profiles', 'audit_logs'] as const;
 type LedgerStore = (typeof LEDGER_STORES)[number];
 
@@ -165,9 +165,6 @@ function createLedgerStores(db: IDBDatabase): void {
   if (!names.contains(OUTBOX_STORE)) {
     const store = db.createObjectStore(OUTBOX_STORE, { keyPath: 'key' });
     store.createIndex('queuedAt', 'queuedAt', { unique: false });
-  }
-  if (!names.contains(SYNC_META_STORE)) {
-    db.createObjectStore(SYNC_META_STORE, { keyPath: 'key' });
   }
 }
 
@@ -305,13 +302,14 @@ async function loadLedgerOwner(): Promise<string | null> {
 }
 
 /**
- * Make `uid` the account whose ledger this device works on. Called at sign-in.
- * A device that has never been linked to an account gives its guest records to
- * the first account that signs in. A device switching accounts keeps the
- * previous account's ledger untouched, ready for its next sign-in.
+ * Make `uid` (the vault's 11-digit mobile number) the owner whose ledger this
+ * device works on. Called at sign-in. A device that has never been linked to a
+ * vault gives its guest records to the first vault that signs in. A device
+ * switching vaults keeps the previous vault's ledger untouched, ready for its
+ * next sign-in.
  */
 export async function activateLedgerOwner(uid: string): Promise<{ claimed: number }> {
-  if (!uid) throw new Error('A signed-in account is required to open its ledger.');
+  if (!uid) throw new Error('A signed-in vault is required to open its ledger.');
   const current = await currentLedgerOwner();
   if (current === uid) return { claimed: 0 };
 
@@ -319,8 +317,8 @@ export async function activateLedgerOwner(uid: string): Promise<{ claimed: numbe
   if (current === null) {
     claimed = await moveLedgerRecords(DEVICE_DB_NAME, ledgerDbName(uid), { clearSource: true });
   }
-  // Google Drive file ids and sync timestamps are per account: the previous
-  // account's Drive bookkeeping must not be reused for this one.
+  // Backup file ids and sync timestamps are per vault: the previous vault's
+  // bookkeeping must not be reused for this one.
   await patchSettingsRaw({
     dataOwnerUid: uid,
     driveFolderId: null,
@@ -330,21 +328,6 @@ export async function activateLedgerOwner(uid: string): Promise<{ claimed: numbe
   });
   ownerPromise = Promise.resolve(uid);
   return { claimed };
-}
-
-/** Owner-scoped metadata (e.g. the one-time legacy cloud import flag). */
-export async function getSyncMeta<T = unknown>(owner: string, key: string): Promise<T | undefined> {
-  const db = await dbForOwner(owner);
-  const tx = db.transaction(SYNC_META_STORE, 'readonly');
-  const row = await requestPromise(tx.objectStore(SYNC_META_STORE).get(key));
-  return row?.value as T | undefined;
-}
-
-export async function setSyncMeta(owner: string, key: string, value: unknown): Promise<void> {
-  const db = await dbForOwner(owner);
-  const tx = db.transaction(SYNC_META_STORE, 'readwrite');
-  tx.objectStore(SYNC_META_STORE).put({ key, value });
-  await txDone(tx);
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -411,16 +394,6 @@ async function readLedgerData(db: IDBDatabase): Promise<SyncLedgerData> {
     requestPromise(tx.objectStore('audit_logs').getAll()) as Promise<AuditLogEntry[]>,
   ]);
   return { patientEntries, settlements, patientProfiles, auditLogs };
-}
-
-/** Snapshot of the active account's ledger. */
-export async function getSyncLedgerData(): Promise<SyncLedgerData> {
-  return readLedgerData(await dbForOwner(await currentLedgerOwner()));
-}
-
-/** Whether an account's ledger holds any record. */
-export async function isLedgerEmpty(owner: string): Promise<boolean> {
-  return isSyncLedgerDataEmpty(await readLedgerData(await dbForOwner(owner)));
 }
 
 /** One record as stored locally, or null. Used by the push path. */
@@ -575,8 +548,8 @@ async function applyLedgerRows(
 }
 
 /**
- * Records from a cloud or Drive source, normalized and grouped by kind. Used
- * by the sync engine and the Drive restore path.
+ * Records from a cloud or backup-file source, normalized and grouped by kind.
+ * Used by the sync engine and the import/restore paths.
  */
 export function ledgerDataFromRecords(
   records: { kind: SyncKind; value: unknown }[]
@@ -617,9 +590,9 @@ export async function applyRemoteRecords(
 }
 
 /**
- * Import a complete snapshot (legacy cloud blob or Drive backup) into an
- * account's ledger as a union. Rows that are new to this device are queued so
- * the account's other devices receive them. Nothing local is discarded.
+ * Import a complete snapshot (legacy cloud blob or a JSON/CSV backup file) into
+ * a vault's ledger as a union. Rows that are new to this device are queued so
+ * the vault's other devices receive them. Nothing local is discarded.
  */
 export async function importLedgerSnapshot(
   owner: string,
@@ -955,16 +928,6 @@ export async function updateProfileForPatient(rawName: string): Promise<PatientP
   return recomputeProfileTx(db, rawName, { enqueue: true, allowDelete: true });
 }
 
-export async function getPatientProfileById(id: string): Promise<PatientProfile | null> {
-  try {
-    const db = await dbForOwner(await currentLedgerOwner());
-    const tx = db.transaction('patient_profiles', 'readonly');
-    return ((await requestPromise(tx.objectStore('patient_profiles').get(id))) as PatientProfile) || null;
-  } catch {
-    return null;
-  }
-}
-
 export async function getAllPatientProfiles(): Promise<PatientProfile[]> {
   try {
     const db = await dbForOwner(await currentLedgerOwner());
@@ -976,16 +939,6 @@ export async function getAllPatientProfiles(): Promise<PatientProfile[]> {
   } catch {
     return [];
   }
-}
-
-export async function savePatientProfile(profile: PatientProfile): Promise<PatientProfile> {
-  const db = await dbForOwner(await currentLedgerOwner());
-  const tx = db.transaction(['patient_profiles', OUTBOX_STORE], 'readwrite');
-  profile.updatedAt = Date.now();
-  tx.objectStore('patient_profiles').put(profile);
-  enqueueInTx(tx, 'profile', profile.id);
-  await txDone(tx);
-  return profile;
 }
 
 /**
@@ -1023,15 +976,6 @@ export async function getAllSettlements(): Promise<Settlement[]> {
 export async function getLatestSettlement(): Promise<Settlement | null> {
   const settlements = await getAllSettlements();
   return settlements.length > 0 ? settlements[0] : null;
-}
-
-export async function saveSettlement(settlement: Settlement): Promise<Settlement> {
-  const db = await dbForOwner(await currentLedgerOwner());
-  const tx = db.transaction(['settlements', OUTBOX_STORE], 'readwrite');
-  tx.objectStore('settlements').put(settlement);
-  enqueueInTx(tx, 'settlement', settlement.settlementId);
-  await txDone(tx);
-  return settlement;
 }
 
 /**
@@ -1140,16 +1084,38 @@ export async function executeSettlement(params: {
   const todayStr = todayDateKey();
   const dateCompact = todayStr.replace(/-/g, '');
 
-  settlementStore.getAll().onsuccess = (settlementsEvent) => {
-    const existingSettlements = (((settlementsEvent.target as IDBRequest).result as Settlement[]) || []).slice();
+  // Both reads are needed before a batch can be built, and each handler is
+  // attached the moment its request is created so the transaction never sees
+  // a completed request without one.
+  let deletedTombstones: AuditLogEntry[] = [];
+  let readsCompleted = 0;
+
+  const beginSettlement = () => {
+    if (++readsCompleted < 2) return;
+
+    const existingSettlements = (settlementsResult as Settlement[] | undefined ?? []).slice();
     existingSettlements.sort((a, b) => b.settlementDate.localeCompare(a.settlementDate) || b.createdAt - a.createdAt);
 
     const latest = existingSettlements.length > 0 ? existingSettlements[0] : null;
     const previousDue = latest ? latest.dueBalance : 0;
 
-    const todaySettlements = existingSettlements.filter((s) => s.settlementDate === todayStr);
-    const seq = String(todaySettlements.length + 1).padStart(2, '0');
-    const settlementId = `ST-${dateCompact}-${seq}`;
+    // Sequence numbers come from the HIGHEST one already used today, never
+    // from a count, and deleted batches still count (they keep their audit
+    // tombstone): handing a used number to a new batch would let two batches
+    // share a reference on the printed receipt. The random suffix keeps the id
+    // unique when two devices settle on the same day before they have synced —
+    // without it both would claim `ST-YYYYMMDD-01` and one batch would
+    // overwrite the other in the cloud.
+    const sequenceOf = (id: unknown): number => {
+      const match = /^ST-(\d{8})-(\d+)/.exec(typeof id === 'string' ? id : '');
+      return match && match[1] === dateCompact ? parseInt(match[2], 10) : 0;
+    };
+    const highestSeqToday = [
+      ...existingSettlements.map((s) => sequenceOf(s.settlementId)),
+      ...deletedTombstones.map((log) => sequenceOf(log.targetId)),
+    ].reduce((max, value) => Math.max(max, value), 0);
+    const seq = String(highestSeqToday + 1).padStart(2, '0');
+    const settlementId = `ST-${dateCompact}-${seq}-${Math.random().toString(36).slice(2, 6)}`;
 
     patientStore.getAll().onsuccess = (entriesEvent) => {
       const allEntries = ((entriesEvent.target as IDBRequest).result as PatientEntry[]) || [];
@@ -1201,6 +1167,19 @@ export async function executeSettlement(params: {
       enqueueInTx(tx, 'audit', audit.id);
       created = newSettlement;
     };
+  };
+
+  let settlementsResult: Settlement[] | undefined;
+  const settlementsReq = settlementStore.getAll();
+  settlementsReq.onsuccess = (event) => {
+    settlementsResult = (event.target as IDBRequest).result as Settlement[];
+    beginSettlement();
+  };
+
+  const deletedReq = auditStore.index('action').getAll(IDBKeyRange.only('SETTLEMENT_DELETED'));
+  deletedReq.onsuccess = (event) => {
+    deletedTombstones = ((event.target as IDBRequest).result as AuditLogEntry[]) || [];
+    beginSettlement();
   };
 
   await done;
@@ -1483,6 +1462,23 @@ export async function exportAllDataJSON(): Promise<string> {
   return JSON.stringify(backup, null, 2);
 }
 
+/**
+ * Neutralise spreadsheet formula injection. Excel and Google Sheets execute a
+ * cell as a formula when its first character is `=`, `+`, `-`, `@`, TAB or CR,
+ * so a patient name or remark starting with one of those would run on the
+ * doctor's machine the moment the CSV is opened. Prefixing with a single quote
+ * forces the cell to be read as literal text.
+ */
+export function csvSafeText(value: unknown): string {
+  const text = value === null || value === undefined ? '' : String(value);
+  return /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+}
+
+/** Quote one free-text CSV cell, escaping embedded quotes (RFC 4180). */
+function csvCell(value: unknown): string {
+  return `"${csvSafeText(value).replace(/"/g, '""')}"`;
+}
+
 export async function exportAllDataCSV(): Promise<{ patientEntriesCSV: string; settlementsCSV: string }> {
   const entries = await getAllPatientEntries();
   const settlements = await getAllSettlements();
@@ -1502,14 +1498,14 @@ export async function exportAllDataCSV(): Promise<{ patientEntriesCSV: string; s
 
   const pRows = entries.map((e) => [
     e.serial,
-    `"${e.date}"`,
-    `"${(e.patientName || '').replace(/"/g, '""')}"`,
-    `"${(e.procedure || '').replace(/"/g, '""')}"`,
+    csvCell(e.date),
+    csvCell(e.patientName),
+    csvCell(e.procedure),
     e.receivedAmount,
     e.doctorShare,
-    `"${e.settlementStatus}"`,
-    `"${e.settlementId || ''}"`,
-    `"${(e.remarks || '').replace(/"/g, '""')}"`,
+    csvCell(e.settlementStatus),
+    csvCell(e.settlementId || ''),
+    csvCell(e.remarks),
   ]);
 
   const patientEntriesCSV = [pHeaders.join(','), ...pRows.map((r) => r.join(','))].join('\n');
@@ -1527,14 +1523,14 @@ export async function exportAllDataCSV(): Promise<{ patientEntriesCSV: string; s
   ];
 
   const sRows = settlements.map((s) => [
-    `"${s.settlementId}"`,
-    `"${s.settlementDate}"`,
-    `"${s.periodFrom}"`,
-    `"${s.periodTo}"`,
+    csvCell(s.settlementId),
+    csvCell(s.settlementDate),
+    csvCell(s.periodFrom),
+    csvCell(s.periodTo),
     s.totalPayable,
     s.amountReceived,
     s.dueBalance,
-    `"${(s.remarks || '').replace(/"/g, '""')}"`,
+    csvCell(s.remarks),
   ]);
 
   const settlementsCSV = [sHeaders.join(','), ...sRows.map((r) => r.join(','))].join('\n');
@@ -1561,15 +1557,6 @@ export async function getAllAuditLogs(): Promise<AuditLogEntry[]> {
   }
 }
 
-export async function clearAuditLogs(): Promise<void> {
-  const { store, tx } = await getStore('audit_logs', 'readwrite');
-  return new Promise((resolve, reject) => {
-    store.clear();
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
 // ---------------- Multi-device Cloud Sync ---------------- //
 
 /**
@@ -1582,11 +1569,11 @@ export async function mergeRemoteSyncData(remote: Partial<SyncLedgerData>): Prom
   return (await applyLedgerRows(db, remote, { enqueue: false })) > 0;
 }
 
-// ---------------- Google Drive Restore ---------------- //
+// ---------------- Backup Restore ---------------- //
 
 /**
  * Remove every patient record (entries, settlements, profiles, audit logs)
- * from the ACTIVE account's local ledger, keeping settings and the outbox.
+ * from the ACTIVE vault's local ledger, keeping settings and the outbox.
  * Nothing is deleted from any cloud copy.
  */
 export async function clearAllPatientData(): Promise<void> {
@@ -1597,7 +1584,7 @@ export async function clearAllPatientData(): Promise<void> {
 }
 
 /**
- * Replace the active account's ledger with the contents of a backup snapshot,
+ * Replace the active vault's ledger with the contents of a backup snapshot,
  * in a single transaction (so an interruption leaves the old data intact).
  * Cloud bookkeeping fields stay local so a stale backup cannot clobber this
  * device's backup schedule, folder, or account ownership.

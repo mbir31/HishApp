@@ -29,9 +29,18 @@ const toNumber = (value: unknown, fallback = 0): number => {
   return Number.isFinite(n) ? n : fallback;
 };
 
+/**
+ * Undo the spreadsheet formula-injection guard that `exportAllDataCSV` adds.
+ * Only a quote that was prefixed in front of a formula trigger (`=+-@`, TAB or
+ * CR) is removed, so a genuine leading apostrophe in a name is preserved and a
+ * JSON/CSV export → import round-trip stays lossless.
+ */
+const stripCsvGuard = (text: string): string =>
+  /^'[=+\-@\t\r]/.test(text) ? text.slice(1) : text;
+
 const toText = (value: unknown, fallback = ''): string => {
   if (value === null || value === undefined) return fallback;
-  return String(value).trim();
+  return stripCsvGuard(String(value).trim());
 };
 
 const genId = (prefix: string, index: number): string =>
@@ -67,8 +76,11 @@ function coerceEntry(raw: any, index: number): PatientEntry | null {
   };
 }
 
-/** Coerce an arbitrary object into a valid Settlement, or null if unusable */
-function coerceSettlement(raw: any, index: number): Settlement | null {
+/**
+ * Coerce an arbitrary object into a valid Settlement, or null if unusable.
+ * Settlement ids are supplied by the file, so no positional fallback is needed.
+ */
+function coerceSettlement(raw: any): Settlement | null {
   if (!raw || typeof raw !== 'object') return null;
 
   const settlementId = toText(raw.settlementId ?? raw['Settlement ID']);
@@ -124,8 +136,8 @@ export function parseJSONBackup(text: string, source = 'JSON backup'): ImportRes
   });
 
   const settlements: Settlement[] = [];
-  rawSettlements.forEach((raw, i) => {
-    const settlement = coerceSettlement(raw, i);
+  rawSettlements.forEach((raw) => {
+    const settlement = coerceSettlement(raw);
     if (settlement) settlements.push(settlement);
     else skipped += 1;
   });
@@ -248,20 +260,17 @@ export function parseCSVFiles(files: { name: string; text: string }[]): ImportRe
       // Settlements CSV
       const map = headerIndexMap(headers);
       const parsed: Settlement[] = [];
-      dataRows.forEach((row, i) => {
-        const settlement = coerceSettlement(
-          {
-            settlementId: cell(row, map, 'Settlement ID'),
-            settlementDate: cell(row, map, 'Settlement Date'),
-            periodFrom: cell(row, map, 'Period From'),
-            periodTo: cell(row, map, 'Period To'),
-            totalPayable: cell(row, map, 'Total Payable'),
-            amountReceived: cell(row, map, 'Paid') || cell(row, map, 'Amount Received'),
-            dueBalance: cell(row, map, 'Due / Balance') || cell(row, map, 'Due Balance'),
-            remarks: cell(row, map, 'Remarks'),
-          },
-          i
-        );
+      dataRows.forEach((row) => {
+        const settlement = coerceSettlement({
+          settlementId: cell(row, map, 'Settlement ID'),
+          settlementDate: cell(row, map, 'Settlement Date'),
+          periodFrom: cell(row, map, 'Period From'),
+          periodTo: cell(row, map, 'Period To'),
+          totalPayable: cell(row, map, 'Total Payable'),
+          amountReceived: cell(row, map, 'Paid') || cell(row, map, 'Amount Received'),
+          dueBalance: cell(row, map, 'Due / Balance') || cell(row, map, 'Due Balance'),
+          remarks: cell(row, map, 'Remarks'),
+        });
         if (settlement) parsed.push(settlement);
         else skippedRows += 1;
       });

@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Calendar, User, Clock, CheckCircle2, AlertCircle, FileText, Activity } from 'lucide-react';
+import { X, User, FileText, Activity } from 'lucide-react';
 import { PatientEntry } from '../types';
 import { displayDateKey, weekdayNameDateKey } from '../utils/dateUtils';
 
@@ -88,7 +88,7 @@ export const PatientHistoryModal: React.FC<PatientHistoryModalProps> = ({
 
         {/* Timeline of Visits */}
         <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-          {historyEntries.map((entry, index) => {
+          {historyEntries.map((entry) => {
             const isSettled = entry.settlementStatus === 'Settled';
 
             return (

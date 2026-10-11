@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { ClinicSettings, PatientEntry, Settlement, TabType, ToastAction, ToastMessage } from './types';
 import {
   DEFAULT_SETTINGS,
@@ -62,6 +62,7 @@ export default function App() {
   const [backupStatus, setBackupStatus] = useState<BackupStatus>(INITIAL_BACKUP_STATUS);
 
   const engineUnsubscribeRef = useRef<(() => void) | null>(null);
+  const statusUnsubscribeRef = useRef<(() => void) | null>(null);
 
   // Toast dispatch helper (supports an optional action button + custom duration)
   const showToast = useCallback(
@@ -106,30 +107,37 @@ export default function App() {
 
   // Initial load and cloud-backup engine startup (no demo seeding)
   useEffect(() => {
+    // The init is async, so the engine handles have to live in refs: a cleanup
+    // that runs before init resolves (React StrictMode double-mount) would
+    // otherwise leave the status subscription attached forever.
+    let cancelled = false;
+
     async function init() {
       try {
         const removedDemoData = await removeLegacyDemoData();
         await refreshData();
+        if (cancelled) return;
 
         // Start the Cloud Vault sync engine
         engineUnsubscribeRef.current = backupEngine.start(() => {
           void refreshData();
         });
-        const unsubBackup = backupEngine.subscribe(setBackupStatus);
+        statusUnsubscribeRef.current = backupEngine.subscribe(setBackupStatus);
         if (removedDemoData) backupEngine.onDataChanged();
-
-        return () => {
-          unsubBackup();
-        };
       } catch (err) {
         console.error('Initialization error:', err);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     }
     init();
+
     return () => {
+      cancelled = true;
+      statusUnsubscribeRef.current?.();
+      statusUnsubscribeRef.current = null;
       engineUnsubscribeRef.current?.();
+      engineUnsubscribeRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

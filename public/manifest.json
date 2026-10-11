@@ -8,7 +8,7 @@
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#F2F5FC",
-  "theme_color": "#4F46E5",
+  "theme_color": "#F2F5FC",
   "icons": [
     {
       "src": "/pwa-192x192.png",
@@ -34,5 +34,13 @@
       "type": "image/png",
       "purpose": "maskable"
     }
+  ],
+  "lang": "en",
+  "dir": "ltr",
+  "categories": [
+    "medical",
+    "finance",
+    "productivity",
+    "health"
   ]
 }

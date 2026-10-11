@@ -25,13 +25,6 @@ export interface SyncLedgerData {
   patientProfiles: PatientProfile[];
 }
 
-export const EMPTY_SYNC_LEDGER_DATA: SyncLedgerData = {
-  patientEntries: [],
-  settlements: [],
-  auditLogs: [],
-  patientProfiles: [],
-};
-
 /** The four synced record kinds (one cloud collection each). */
 export type SyncKind = 'entry' | 'settlement' | 'profile' | 'audit';
 

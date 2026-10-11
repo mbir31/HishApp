@@ -25,7 +25,10 @@ export function getAutoBackupStatus(): AutoBackupStatus {
     return { lastBackupAt: null, nextBackupAt: null, hasCachedSnapshot: false, isEligible: false };
   }
   const raw = localStorage.getItem(AUTO_BACKUP_STORAGE_KEY);
-  const lastBackupAt = raw ? parseInt(raw, 10) : null;
+  // A non-numeric value must not poison the schedule: NaN would make
+  // `isEligible` false forever and silently stop the weekly backup.
+  const parsed = raw ? Number.parseInt(raw, 10) : NaN;
+  const lastBackupAt = Number.isFinite(parsed) ? parsed : null;
   const nextBackupAt = lastBackupAt ? lastBackupAt + SEVEN_DAYS_MS : Date.now();
   const hasCachedSnapshot = !!localStorage.getItem(AUTO_BACKUP_SNAPSHOT_KEY);
   const isEligible = !lastBackupAt || Date.now() - lastBackupAt >= SEVEN_DAYS_MS;

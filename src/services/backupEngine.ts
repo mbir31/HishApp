@@ -23,35 +23,28 @@ import {
   type VaultSession,
 } from './vaultAuth';
 import {
-  isBiometricAvailable,
-  isBiometricEnrolledFor,
   loginWithBiometric,
   registerBiometric,
   resetPinWithBiometric,
 } from './biometricAuth';
 import {
   connectFirestoreSync,
-  createCloudRecoverySnapshot,
   getAvailableCloudSnapshots,
   reconcileVaultRecords,
-  restoreFromCloudSnapshot,
   restoreFromSpecificSnapshot,
   type FirestoreSyncSession,
 } from './firestoreSync';
 import {
   ensurePersistentStorage,
   getStorageHealth,
-  isStoragePersisted,
   type StorageHealth,
 } from './storagePersistence';
 import { crossTabSync } from './crossTabSync';
 import {
   captureEmergencyLocalSnapshot,
-  getEmergencySnapshotMeta,
   inspectDualStoreHealth,
   restoreFromEmergencySnapshot,
   type DualStoreHealth,
-  type EmergencySnapshotMeta,
 } from './emergencyBackup';
 import type { CloudSnapshotInfo, ReconciliationResult } from '../types';
 
@@ -377,7 +370,6 @@ class BackupEngine {
       this.syncSession = null;
     }
     clearVaultSession();
-    const prevUser = this.user?.phoneNumber;
     this.user = null;
     this.phase = isFirebaseConfigured() ? 'signed-out' : 'not-configured';
     this.pendingCount = 0;

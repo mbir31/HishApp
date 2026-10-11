@@ -14,8 +14,9 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { getFirestoreDb } from '../config/firebase';
 import {
   generateSalt,
-  hashPin,
+  hashPinStretched,
   isValidPin,
+  PIN_HASH_VERSION,
   storeVaultSession,
   type VaultMetadata,
   type VaultSession,
@@ -65,15 +66,6 @@ export function isBiometricEnrolledFor(phone: string): boolean {
     return !!raw;
   } catch {
     return false;
-  }
-}
-
-/** Get the last enrolled phone number for biometrics */
-export function getLastBiometricPhone(): string | null {
-  try {
-    return localStorage.getItem(LAST_BIO_PHONE_KEY) || null;
-  } catch {
-    return null;
   }
 }
 
@@ -235,11 +227,12 @@ export async function resetPinWithBiometric(phone: string, newPin: string): Prom
   }
 
   const newSalt = generateSalt();
-  const newPinHash = await hashPin(cleanPin, newSalt);
+  const newPinHash = await hashPinStretched(cleanPin, newSalt);
 
   await updateDoc(vaultRef, {
     pinHash: newPinHash,
     salt: newSalt,
+    hashVersion: PIN_HASH_VERSION,
     updatedAt: Date.now(),
   });
 
