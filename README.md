@@ -30,13 +30,15 @@
 
 | বৈশিষ্ট্য (Parameters) | 📱 সাধারণ নেটিভ অ্যাপ (Native App - APK) | ⚡ HishApp PWA (প্রগ্রেসিভ ওয়েব অ্যাপ) |
 |---|---|---|
-| **স্টোরেজ সাইজ (App Size)** | **৫০ MB – ১৫০ MB+** (ফোনের মূল্যবান মেমোরি দখল করে) | **১ MB-রও কম (< ৫০০ KB)** — ফোনে কোনো ভারী বোঝা তৈরি করে না |
+| **স্টোরেজ সাইজ (App Size)** | **৫০ MB – ১৫০ MB+** (ফোনের মূল্যবান মেমোরি দখল করে) | **~২.৫ MB মোট** (সম্পূর্ণ অ্যাপ + সব লোগোসহ) — ভারি APK-এর তুলনায় প্রায় ৯৫% হালকা |
 | **ইনস্টলেশন ঝামেলা** | প্লে-স্টোর খোঁজা, অনুমোদন, ভারি ডাউনলোড ও অপেক্ষা | **১-ট্যাপ ইনস্টল** — ব্রাউজার মেনু থেকে সরাসরি হোম স্ক্রিনে যোগ হয় |
 | **আপডেট ঝামেলা** | প্রতিবার প্লে-স্টোর থেকে নতুন ভার্সন ম্যানুয়ালি আপডেট | **জিরো-টাচ অটো আপডেট** — প্রতিবার ওপেন করলেই ইনস্ট্যান্ট আপডেট |
-| **র‍্যাম ও ব্যাটারি খরচ** | ব্যাকগ্রাউন্ড প্রসেস চালু রেখে ব্যাটারি ও র‍্যাম স্লো করে | **অতি হালকা ও দ্রুত** — জিরো ব্যাকগ্রাউন্ড ড্রেন, ৬০ FPS স্মুথনেস |
+| **র‍্যাম ও ব্যাটারি খরচ** | ব্যাকগ্রাউন্ড প্রসেস চালু রেখে ব্যাটারি ও র‍্যাম স্লো করে | **অতি হালকা ও দ্রুত** — জিরো ব্যাকগ্রাউন্ড ড্রেন, লো-এন্ড ফোনেও মসৃণ |
 | **অনুমতি (Permissions)** | কন্টাক্টস, ক্যামেরা, লোকেশন ইত্যাদির অপ্রয়োজনীয় অ্যাক্সেস চায় | **১০০% প্রাইভেসি ফ্রেন্ডলি** — কোনো অনধিকার ডিভাইজ পারমিশন লাগে না |
-| **অফলাইন সাপোর্ট** | বেশিরভাগ অ্যাপ ইন্টারনেট ছাড়া খোলেই না | **১০০% অফলাইন ফাংশনাল** — ইন্টারনেট না থাকলেও পুরো দিন নির্বিঘ্নে চালান |
+| **অফলাইন সাপোর্ট** | বেশিরভাগ অ্যাপ ইন্টারনেট ছাড়া খোলেই না | **আনলকের পর ১০০% অফলাইন ফাংশনাল\*** — সকালে একবার আনলক করলে ইন্টারনেট না থাকলেও পুরো দিন নির্বিঘ্নে চালান |
 | **ক্রস-প্ল্যাটফর্ম** | অ্যান্ড্রয়েডের জন্য আলাদা, আইফোনের জন্য আলাদা অ্যাপ | **যেকোনো ডিভাইসে এক ক্লিকে চলে** — Android, iPhone, iPad, Mac ও PC |
+
+> \*দিনের প্রথম আনলক (PIN/বায়োমেট্রিক) ক্লাউড ভল্টের সাথে যাচাই হয় বলে সে সময় সংক্ষিপ্ত ইন্টারনেট সংযোগ প্রয়োজন। আনলকের পর থেকে সারাদিন — এন্ট্রি, সেটেলমেন্ট, PDF/JPG এক্সপোর্টসহ সব ফিচার — সম্পূর্ণ অফলাইনে চলে।
 
 ---
 
@@ -108,7 +110,7 @@ HishApp is built as a progressive web application (PWA). It requires no app stor
    👉 **<https://hishapp1.web.app/>**
 2. Tap the **"INSTALL APP"** button in the header (or tap browser menu `⋮` ➔ **"Install app"** / **"Add to Home screen"**).
 3. The **HishApp** icon will appear on your phone's home screen.
-4. Launch it anytime — it runs full-screen like a native app and works flawlessly even when you have **zero internet connection**!
+4. Launch it anytime — it runs full-screen like a native app. After the morning's one-time unlock, it works flawlessly even when you have **zero internet connection** all day!
 
 ---
 
@@ -170,7 +172,7 @@ Dental surgeons frequently ask:
    - Alongside IndexedDB, the engine captures compressed emergency JSON snapshots into isolated Web Storage. If a device ever encounters an IndexedDB initialization failure or strict sandbox reset, the application instantly detects it and offers 1-tap data reconstruction.
 
 5. **📦 Layer 5: Automated 7-Day Background JSON Export & Cloud Vault**
-   - **Zero-Effort Automated Backups:** Every 7 days, HishApp silently compiles a complete, timestamped JSON export file (`hishapp-autobackup-<date>.json`) and triggers a direct background download into your device's `Downloads` folder without interrupting your clinical workflow.
+   - **Zero-Effort Automated Backups:** Every 7 days, HishApp silently compiles a complete, timestamped JSON export file (`HishApp_AutoBackup-<date>.json`) and triggers a direct background download into your device's `Downloads` folder without interrupting your clinical workflow.
    - **Multi-Device Cloud Vault:** Backed up and synced via your Mobile Number + Secret PIN, allowing you to restore your entire chamber history on a new phone or laptop in seconds.
 
 ---
@@ -190,13 +192,13 @@ Dental surgeons frequently ask:
 | | Unpaid Arrears Carry-Over | Unpaid clinic dues auto-transfer to subsequent cycles |
 | | Advance Settlement Credits | Clinic prepayments deduct smoothly from future batches |
 | **Sharing & Reports** | 1-Tap Direct WhatsApp Share | Share formatted settlement & monthly breakdowns via WhatsApp |
-| | Certified High-Res JPG | Export cryptographic stamped visual receipts (Canvas 2x) |
+| | Certified High-Res JPG | Export certified visual receipts with EN+BN certification text (Canvas 2x) |
 | | Monthly PDF Audit Report | Multi-page procedure audit table with daily totals |
 | | CSV / Excel Data Export | 2 separate spreadsheets (Detailed Visits + Settlements) |
 | **Security & Privacy** | Mobile + 4-Digit PIN Vault | Frictionless authentication without third-party email trackers |
 | | Biometric Quick Unlock | Instant Touch ID / Face ID / Fingerprint morning login |
 | | Once-a-Day Unlock | Enter PIN once in the morning, works seamlessly all day |
-| | Zero Lag & 60 FPS Polish | Hardware-accelerated transitions & zero UI blocking |
+| | Fast, Lightweight UI | Pure-SVG charts, no heavy UI framework — smooth on low-end phones |
 | | 100% Offline PWA | Operates smoothly in clinics with poor cellular reception |
 | | Recycle Bin & 10s Undo | Safely restore any accidentally deleted visit |
 
@@ -208,7 +210,7 @@ Dental surgeons frequently ask:
 - **Storage:** Offline-first IndexedDB with persistent Outbox architecture
 - **Security:** Web Crypto API (PBKDF2/SHA-256 PIN hashing), WebAuthn Biometrics
 - **Reporting:** HTML5 Canvas (high-DPI 2x image rendering), jsPDF & AutoTable
-- **Quality:** 99 Automated Unit Tests (`tsx --test`), strict TypeScript typing (`tsc --noEmit`)
+- **Quality:** 111 Automated Unit Tests (`tsx --test`), strict TypeScript typing (`tsc --noEmit`)
 
 ---
 

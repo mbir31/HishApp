@@ -1,5 +1,5 @@
 // Service Worker for HishApp - Dental Clinic Income & Settlement Tracker
-// v4: update-safe caching strategy.
+// v5: update-safe caching strategy.
 //
 // Previous revisions served EVERY same-origin GET cache-first, including
 // /index.html and the hashed JS/CSS bundles. That silently froze the installed
@@ -9,7 +9,10 @@
 //   • navigations (/index.html)  → network-first, cache only as offline fallback
 //   • hashed build assets        → cache-first (filenames change on every build)
 //   • everything else same-origin → stale-while-revalidate
-const CACHE_VERSION = 'v4';
+//
+// v5 also evicts the old 2.2 MB /dlogo.png from existing installs: the logo is
+// now a 512×512 optimized PNG (~80 KB), so the whole precache shrinks by ~2 MB.
+const CACHE_VERSION = 'v5';
 const CACHE_NAME = `hisapp-cache-${CACHE_VERSION}`;
 
 // App shell + branding. The hashed /assets/* bundles are cached at runtime.
