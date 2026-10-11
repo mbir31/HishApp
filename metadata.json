@@ -1,0 +1,8 @@
+{
+  "name": "HishApp - Dental Clinic Income & Settlement Tracker",
+  "description": "Dental Clinic Income & Settlement Tracker for dental surgeons with 40% clinical share tracking, carry-forward settlements, central Cloud Firestore data vault with 11-digit mobile number and 4-digit PIN authentication, and offline-first IndexedDB storage.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
