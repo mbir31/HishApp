@@ -1,5 +1,34 @@
 # Firebase Deployment Workflow Fixes
 
+## October 11, 2026: `npm ci` EUSAGE after lockfile pruning
+
+The [failed deployment](https://github.com/mbir31/HishApp/actions/runs/38156771694)
+stopped at **Install dependencies**. The preceding commit hand-pruned the
+optional, platform-specific packages (`@esbuild/*`, `@rolldown/binding-*`,
+`@tailwindcss/oxide-*`, `lightningcss-*`, `@typescript/typescript-*`,
+`fsevents`) from `package-lock.json`, keeping only the linux-x64 entries.
+
+npm 11 (bundled with Node 24 in CI) requires the lockfile to describe the whole
+dependency tree, including optional packages for other platforms. With those
+entries missing, `npm ci` aborts with:
+
+```text
+npm error code EUSAGE
+npm error `npm ci` can only install packages when your package.json and
+package-lock.json or npm-shrinkwrap.json are in sync.
+npm error Missing: @tailwindcss/oxide-darwin-arm64@4.3.3 from lock file
+...
+```
+
+### Fix
+
+- Regenerate the lockfile with npm 11 (`npm install --package-lock-only`),
+  which restores the 92 optional platform entries. No dependency version
+  changed; nothing was removed.
+- Never hand-edit or prune `package-lock.json`. Optional platform packages are
+  metadata only — npm downloads just the ones matching the runner, so they do
+  not add install time or bundle size.
+
 ## October 11, 2026: Firestore deployment HTTP 403
 
 The [failed deployment](https://github.com/mbir31/HishApp/actions/runs/38148988055)
