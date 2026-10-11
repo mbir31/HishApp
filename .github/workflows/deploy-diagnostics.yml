@@ -36,35 +36,22 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
-          python3 -m pip install --quiet 'google-auth[requests]'
-          python3 - <<'PY'
-          import json
-          import os
-          import urllib.request
-          from pathlib import Path
-          from google.auth.transport.requests import Request
-          from google.oauth2.service_account import Credentials
+          node --input-type=module <<'JS'
+          import { readFile } from 'node:fs/promises';
+          import { cert, deleteApp, initializeApp } from 'firebase-admin/app';
+          import { getSecurityRules } from 'firebase-admin/security-rules';
 
-          credentials = Credentials.from_service_account_info(
-              json.loads(os.environ['FIREBASE_SERVICE_ACCOUNT_JSON']),
-              scopes=['https://www.googleapis.com/auth/cloud-platform'],
-          )
-          credentials.refresh(Request())
-          source = Path('firestore.rules').read_text()
-          request = urllib.request.Request(
-              'https://firebaserules.googleapis.com/v1/projects/hishapp1:test',
-              data=json.dumps({'source': {'files': [{'name': 'firestore.rules', 'content': source}]}}).encode(),
-              headers={
-                  'Authorization': f'Bearer {credentials.token}',
-                  'Content-Type': 'application/json',
-              },
-          )
-          with urllib.request.urlopen(request) as response:
-              result = json.load(response)
-          errors = [issue for issue in result.get('issues', []) if issue.get('severity') == 'ERROR']
-          if errors:
-              for issue in errors:
-                  print('::error title=Firestore compilation error::' + issue.get('description', 'Unknown error'))
-              raise SystemExit(1)
-          print('::notice title=Firestore Rules API verified::Committed rules compile successfully; no release was changed.')
-          PY
+          const account = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+          const app = initializeApp({ credential: cert(account), projectId: 'hishapp1' });
+          try {
+            const file = { name: 'firestore.rules', content: await readFile('firestore.rules', 'utf8') };
+            const staged = await getSecurityRules(app).createRuleset(file);
+            console.log(`::notice title=Firebase Rules SDK verified::Committed rules compiled into draft ${staged.name}; the active release was not changed.`);
+          } catch (error) {
+            const message = error.message.replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A');
+            console.log(`::error title=Firebase Rules SDK verification failed::${message}`);
+            process.exitCode = 1;
+          } finally {
+            await deleteApp(app);
+          }
+          JS
