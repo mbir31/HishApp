@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Scale,
   Calendar,
@@ -13,9 +13,17 @@ import {
   Download,
   ImageDown,
   Loader2,
+  AlertTriangle,
+  Handshake,
+  BadgeCheck,
 } from 'lucide-react';
-import { ClinicSettings, PatientEntry, Settlement } from '../types';
+import { ClinicSettings, PatientEntry, Settlement, SettlementResolution } from '../types';
 import { deleteSettlement, executeSettlement } from '../db/indexedDB';
+import {
+  computeSettlementOutcome,
+  isSettlementWithDue,
+  writtenOffAmountOf,
+} from '../utils/settlementResolution';
 import { exportSettlementAsImage } from '../utils/settlementImageExport';
 import { MonthlySummaryModal } from './MonthlySummaryModal';
 import { SpecificSummaryModal } from './SpecificSummaryModal';
@@ -48,6 +56,15 @@ export const SettlementTab: React.FC<SettlementTabProps> = ({
   const [periodTo, setPeriodTo] = useState<string>(todayStr);
   const [amountReceived, setAmountReceived] = useState<string>('');
   const [remarks, setRemarks] = useState<string>('');
+  /**
+   * Confirmation the doctor must tick when the amount received from the clinic
+   * does not equal the total claimable amount:
+   *   • 'due'     — the difference stays as a due and carries forward;
+   *   • 'cleared' — mutual round-figure agreement: the difference is written
+   *                 off and nothing shows in the dashboard due cards.
+   * `null` means nothing has been ticked yet.
+   */
+  const [resolution, setResolution] = useState<SettlementResolution | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [showHistory, setShowHistory] = useState<boolean>(false);
   const [isMonthlyModalOpen, setIsMonthlyModalOpen] = useState<boolean>(false);
@@ -83,7 +100,33 @@ export const SettlementTab: React.FC<SettlementTabProps> = ({
 
   const totalClaimable = periodShare + previousDue;
   const parsedReceived = Math.max(0, parseFloat(amountReceived) || 0);
-  const dueBalancePreview = totalClaimable - parsedReceived;
+  const dueBalancePreview = Math.round((totalClaimable - parsedReceived) * 100) / 100;
+
+  /**
+   * The clinic paid a round figure that does not match the claimable amount,
+   * so the doctor has to tick a confirmation before the batch can be closed.
+   */
+  const amountMismatch = Math.abs(dueBalancePreview) > 0.004;
+  const shortfallPreview = Math.max(0, dueBalancePreview); // unpaid, still claimable
+  const advancePreview = Math.max(0, -dueBalancePreview); // clinic paid extra
+  const dueOptionPreview = computeSettlementOutcome({
+    totalClaimable,
+    amountReceived: parsedReceived,
+    resolution: 'due',
+  });
+  const clearedOptionPreview = computeSettlementOutcome({
+    totalClaimable,
+    amountReceived: parsedReceived,
+    resolution: 'cleared',
+  });
+  const isClearedChoice = resolution === 'cleared';
+  const requiresResolution = amountMismatch && resolution === null;
+
+  // Any edit to the figures invalidates a previously ticked confirmation — the
+  // doctor must re-confirm against the numbers now on screen.
+  useEffect(() => {
+    setResolution(null);
+  }, [periodFrom, periodTo, amountReceived]);
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('en-BD').format(Math.round(num));
@@ -134,6 +177,23 @@ export const SettlementTab: React.FC<SettlementTabProps> = ({
       return;
     }
 
+    // A round-figure payment can never be closed silently: the doctor has to
+    // state whether the difference carries forward or the batch stands cleared.
+    if (amountMismatch && resolution === null) {
+      showToast(
+        'Confirmation Required',
+        `Amount received differs from the total claimable amount by ${currency} ${formatNumber(
+          Math.abs(dueBalancePreview)
+        )}. Tick how this settlement is confirmed.`,
+        'warning'
+      );
+      return;
+    }
+
+    const finalResolution: SettlementResolution = amountMismatch
+      ? (resolution as SettlementResolution)
+      : 'cleared';
+
     try {
       setIsSubmitting(true);
       const newSettlement = await executeSettlement({
@@ -141,17 +201,24 @@ export const SettlementTab: React.FC<SettlementTabProps> = ({
         periodTo,
         amountReceived: parsedReceived,
         remarks: remarks.trim(),
+        resolution: finalResolution,
       });
 
       onSettlementCompleted(newSettlement);
       setAmountReceived('');
       setRemarks('');
+      setResolution(null);
 
+      const writtenOff = writtenOffAmountOf(newSettlement);
       showToast(
         `Settlement ${newSettlement.settlementId} Confirmed!`,
-        `Settled ${newSettlement.patientCount} patients. Carried forward balance: ${currency} ${formatNumber(
-          newSettlement.dueBalance
-        )}.`,
+        writtenOff > 0
+          ? `Settled ${newSettlement.patientCount} patients. Cleared with no due — ${currency} ${formatNumber(
+              writtenOff
+            )} waived by mutual agreement on a round figure.`
+          : `Settled ${newSettlement.patientCount} patients. Carried forward balance: ${currency} ${formatNumber(
+              newSettlement.dueBalance
+            )}.`,
         'success'
       );
     } catch (err: any) {
@@ -470,29 +537,46 @@ _Generated electronically by HishApp (hishapp1.web.app)_`;
           {/* LIVE BALANCE PREVIEW (REMAINING DUE / ADVANCE ADJUSTED) */}
           <div
             className={`p-4 rounded-2xl border transition-all ${
-              dueBalancePreview > 0
+              isClearedChoice || dueBalancePreview === 0
+                ? 'bg-emerald-50/40 border-emerald-200 text-emerald-900'
+                : dueBalancePreview > 0
                 ? 'bg-amber-50/60 border-amber-200 text-amber-900'
-                : dueBalancePreview < 0
-                ? 'bg-emerald-50/60 border-emerald-200 text-emerald-900'
-                : 'bg-emerald-50/40 border-emerald-200 text-emerald-900'
+                : 'bg-emerald-50/60 border-emerald-200 text-emerald-900'
             }`}
           >
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-[10px] font-extrabold uppercase tracking-wider opacity-80">
-                  {dueBalancePreview > 0
+                  {isClearedChoice
+                    ? clearedOptionPreview.writtenOffAmount > 0
+                      ? 'Cleared with No Due (Difference Waived)'
+                      : 'Cleared with No Due'
+                    : amountMismatch && resolution === null
+                    ? 'Difference Awaiting Confirmation'
+                    : dueBalancePreview > 0
                     ? 'Remaining Due (Carried Forward to Next Batch)'
                     : dueBalancePreview < 0
                     ? 'Advance Paid by Clinic (Credit)'
                     : 'Exact Settlement (Zero Due)'}
                 </span>
                 <div className="text-xl font-black mt-0.5">
-                  {currency} {formatNumber(Math.abs(dueBalancePreview))}
+                  {currency}{' '}
+                  {formatNumber(
+                    isClearedChoice ? clearedOptionPreview.writtenOffAmount : Math.abs(dueBalancePreview)
+                  )}
                 </div>
               </div>
 
               <div className="text-right text-xs">
-                {dueBalancePreview > 0 ? (
+                {isClearedChoice ? (
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-200/80 font-bold text-emerald-800">
+                    No Due
+                  </span>
+                ) : amountMismatch && resolution === null ? (
+                  <span className="px-2 py-0.5 rounded-full bg-amber-200/80 font-bold text-amber-800">
+                    Tick Below
+                  </span>
+                ) : dueBalancePreview > 0 ? (
                   <span className="px-2 py-0.5 rounded-full bg-amber-200/80 font-bold text-amber-800">
                     Underpaid
                   </span>
@@ -508,6 +592,149 @@ _Generated electronically by HishApp (hishapp1.web.app)_`;
               </div>
             </div>
           </div>
+
+          {/* 4b. Mandatory settlement confirmation (amount ≠ total claimable) */}
+          {amountMismatch ? (
+            <div className="space-y-3 p-4 rounded-2xl bg-slate-50/70 border border-slate-200/60">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                  <Handshake className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Settlement Confirmation</span>
+                </label>
+                <span
+                  className={`text-[10px] font-extrabold uppercase tracking-wide px-2 py-0.5 rounded-full border ${
+                    resolution === null
+                      ? 'bg-amber-100 text-amber-700 border-amber-200'
+                      : 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                  }`}
+                >
+                  {resolution === null ? 'Selection Required' : 'Confirmed'}
+                </span>
+              </div>
+
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                The clinic paid <strong>{currency} {formatNumber(parsedReceived)}</strong> against a total
+                claimable of <strong>{currency} {formatNumber(totalClaimable)}</strong> — a difference of{' '}
+                <strong>{currency} {formatNumber(Math.abs(dueBalancePreview))}</strong>. Tick one option to
+                confirm how this batch is closed.
+              </p>
+
+              <div className="space-y-2" role="radiogroup" aria-label="Settlement confirmation options">
+                {/* Option 1 — due amount carried forward */}
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={resolution === 'due'}
+                  onClick={() => setResolution('due')}
+                  className={`w-full text-left p-3.5 rounded-2xl border transition flex items-start gap-3 ${
+                    resolution === 'due'
+                      ? 'bg-amber-50/80 border-amber-300 ring-1 ring-amber-400/40'
+                      : 'bg-white/70 border-white/70 hover:bg-white/90'
+                  }`}
+                >
+                  <span
+                    className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                      resolution === 'due' ? 'border-amber-500 bg-amber-500' : 'border-slate-300'
+                    }`}
+                  >
+                    {resolution === 'due' && <CheckCircle2 className="w-3 h-3 text-white" />}
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="flex items-center gap-1.5 flex-wrap">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span className="text-xs font-bold text-slate-900">
+                        Settlement done with due amount
+                      </span>
+                      <span className="text-xs font-black text-amber-700">
+                        {currency} {formatNumber(shortfallPreview)}
+                      </span>
+                    </span>
+                    <span className="block text-[10px] text-slate-500 mt-1 leading-relaxed">
+                      {dueOptionPreview.dueBalance < 0
+                        ? `The clinic's extra ${currency} ${formatNumber(advancePreview)} stays in the ledger as an advance credit and is adjusted in the next settlement cycle.`
+                        : `The unpaid ${currency} ${formatNumber(shortfallPreview)} carries forward to the next settlement cycle and keeps showing in the dashboard due cards until it is paid.`}
+                    </span>
+                  </span>
+                </button>
+
+                {/* Option 2 — cleared, nothing left due */}
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={resolution === 'cleared'}
+                  onClick={() => setResolution('cleared')}
+                  className={`w-full text-left p-3.5 rounded-2xl border transition flex items-start gap-3 ${
+                    resolution === 'cleared'
+                      ? 'bg-emerald-50/80 border-emerald-300 ring-1 ring-emerald-400/40'
+                      : 'bg-white/70 border-white/70 hover:bg-white/90'
+                  }`}
+                >
+                  <span
+                    className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                      resolution === 'cleared' ? 'border-emerald-500 bg-emerald-500' : 'border-slate-300'
+                    }`}
+                  >
+                    {resolution === 'cleared' && <CheckCircle2 className="w-3 h-3 text-white" />}
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="flex items-center gap-1.5 flex-wrap">
+                      <BadgeCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span className="text-xs font-bold text-slate-900">Settlement Cleared with no due</span>
+                      {clearedOptionPreview.writtenOffAmount > 0 && (
+                        <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+                          {currency} {formatNumber(clearedOptionPreview.writtenOffAmount)} waived
+                        </span>
+                      )}
+                    </span>
+                    <span className="block text-[10px] text-slate-500 mt-1 leading-relaxed">
+                      {clearedOptionPreview.writtenOffAmount > 0
+                        ? `Mutual round-figure agreement: the difference of ${currency} ${formatNumber(
+                            clearedOptionPreview.writtenOffAmount
+                          )} is written off and no due or overdue is shown in the dashboard due cards.`
+                        : `The account is closed on the agreed figure — no due or overdue is shown in the dashboard due cards${
+                            advancePreview > 0
+                              ? `, and the clinic's extra ${currency} ${formatNumber(advancePreview)} stays as an advance credit`
+                              : ''
+                          }.`}
+                    </span>
+                  </span>
+                </button>
+              </div>
+
+              {resolution === 'cleared' &&
+                clearedOptionPreview.writtenOffAmount > 0 &&
+                !clearedOptionPreview.dueBalance && (
+                  <p className="text-[10px] font-medium text-emerald-700 bg-emerald-50/80 border border-emerald-100 rounded-xl p-2.5 leading-relaxed">
+                    This will be recorded on the settlement and printed on the receipt/statement as a{' '}
+                    <strong>round-figure waiver of {currency}{' '}
+                    {formatNumber(clearedOptionPreview.writtenOffAmount)}</strong>.
+                  </p>
+                )}
+
+              {resolution === 'cleared' && advancePreview > 0 && (
+                <p className="text-[10px] font-medium text-emerald-700 bg-emerald-50/80 border border-emerald-100 rounded-xl p-2.5 leading-relaxed">
+                  The clinic paid {currency} {formatNumber(advancePreview)} more than the claimable amount. That
+                  extra is kept as an advance credit — never as a due — and is adjusted in the next cycle.
+                </p>
+              )}
+
+              {resolution === 'due' && shortfallPreview > 0 && (
+                <p className="text-[10px] font-medium text-amber-700 bg-amber-50/80 border border-amber-100 rounded-xl p-2.5 leading-relaxed">
+                  Dashboard due cards will keep showing{' '}
+                  <strong>{currency} {formatNumber(dueOptionPreview.dueBalance)}</strong> until it is received
+                  from the clinic.
+                </p>
+              )}
+            </div>
+          ) : totalClaimable > 0 ? (
+            <div className="flex items-start gap-2 p-3 rounded-2xl bg-emerald-50/50 border border-emerald-100 text-[11px] font-semibold text-emerald-800">
+              <BadgeCheck className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <span>
+                Amount received matches the total claimable exactly — this batch will be confirmed as{' '}
+                <strong>Settlement Cleared with no due</strong>.
+              </span>
+            </div>
+          ) : null}
 
           {/* Settlement Notes / Remarks */}
           <div className="space-y-1">
@@ -529,13 +756,36 @@ _Generated electronically by HishApp (hishapp1.web.app)_`;
         </div>
 
         {/* 5. Action Button: Confirm Settlement */}
+        {/* The confirmation tick is mandatory while the amounts differ, so the
+            button stays disabled until one of the two options is selected. */}
+        {requiresResolution && (
+          <p className="text-[11px] font-semibold text-amber-700 bg-amber-50/80 border border-amber-200 rounded-2xl px-3.5 py-2.5 flex items-start gap-2">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+            <span>
+              Tick <strong>Settlement done with due amount {currency}{' '}
+              {formatNumber(shortfallPreview)}</strong> or <strong>Settlement Cleared with no due</strong> above
+              to confirm this round-figure settlement.
+            </span>
+          </p>
+        )}
+
         <button
           type="submit"
-          disabled={isSubmitting || (eligibleEntriesInRange.length === 0 && previousDue === 0)}
+          disabled={
+            isSubmitting ||
+            (eligibleEntriesInRange.length === 0 && previousDue === 0) ||
+            requiresResolution
+          }
           className="btn-gradient w-full py-3.5 px-6 rounded-2xl text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <CheckCircle2 className="w-5 h-5" />
-          <span>{isSubmitting ? 'Finalizing Batch...' : 'Confirm Settlement'}</span>
+          <span>
+            {isSubmitting
+              ? 'Finalizing Batch...'
+              : isClearedChoice && amountMismatch
+              ? 'Confirm — Cleared with No Due'
+              : 'Confirm Settlement'}
+          </span>
         </button>
       </form>
 
@@ -641,6 +891,27 @@ _Generated electronically by HishApp (hishapp1.web.app)_`;
                       </span>
                     </div>
                   </div>
+
+                  {/* Confirmation recorded for this batch */}
+                  {isSettlementWithDue(s) ? (
+                    <p className="text-[10px] font-semibold text-amber-700 bg-amber-50/80 border border-amber-100 p-1.5 rounded-lg flex items-center gap-1.5">
+                      <AlertTriangle className="w-3 h-3 shrink-0" />
+                      <span>
+                        Settlement done with due amount {currency} {formatNumber(s.dueBalance)} — carried
+                        forward
+                      </span>
+                    </p>
+                  ) : (
+                    <p className="text-[10px] font-semibold text-emerald-700 bg-emerald-50/80 border border-emerald-100 p-1.5 rounded-lg flex items-center gap-1.5">
+                      <BadgeCheck className="w-3 h-3 shrink-0" />
+                      <span>
+                        Settlement Cleared with no due
+                        {writtenOffAmountOf(s) > 0
+                          ? ` — ${currency} ${formatNumber(writtenOffAmountOf(s))} waived by mutual agreement`
+                          : ''}
+                      </span>
+                    </p>
+                  )}
 
                   {s.remarks && (
                     <p className="text-[10px] text-slate-500 italic bg-slate-50/80 p-1.5 rounded-lg">

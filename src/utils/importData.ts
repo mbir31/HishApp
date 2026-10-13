@@ -13,7 +13,7 @@
  * Every row is validated and coerced into the app's TypeScript shapes;
  * invalid rows are skipped and reported via `skippedRows`.
  */
-import { ClinicSettings, PatientEntry, Settlement } from '../types';
+import { ClinicSettings, PatientEntry, Settlement, SettlementResolution } from '../types';
 import { todayDateKey } from './dateUtils';
 
 export interface ImportResult {
@@ -89,6 +89,18 @@ function coerceSettlement(raw: any): Settlement | null {
   const settlementDate = toText(raw.settlementDate ?? raw['Settlement Date']);
   if (!settlementDate) return null;
 
+  const resolutionText = toText(raw.resolution ?? raw['Resolution']).toLowerCase();
+  const dueBalance = toNumber(raw.dueBalance ?? raw['Due Balance'] ?? raw['Due / Balance']);
+  // An imported row without an explicit confirmation is read exactly like a
+  // stored record from an older build: whichever way its balance was left.
+  const resolution: SettlementResolution =
+    resolutionText === 'due' || resolutionText === 'cleared'
+      ? resolutionText
+      : dueBalance > 0
+        ? 'due'
+        : 'cleared';
+  const writtenOffAmount = Math.max(0, toNumber(raw.writtenOffAmount ?? raw['Written Off']));
+
   return {
     settlementId,
     settlementDate,
@@ -99,7 +111,18 @@ function coerceSettlement(raw: any): Settlement | null {
     previousDue: Math.max(0, toNumber(raw.previousDue ?? raw['Previous Due'])),
     totalPayable: Math.max(0, toNumber(raw.totalPayable ?? raw['Total Payable'])),
     amountReceived: Math.max(0, toNumber(raw.amountReceived ?? raw['Paid'] ?? raw['Amount Received'])),
-    dueBalance: toNumber(raw.dueBalance ?? raw['Due Balance'] ?? raw['Due / Balance']),
+    dueBalance,
+    resolution,
+    // A cleared batch only ever waives a shortfall; an explicit value from the
+    // file wins, otherwise it is derived from the batch's own figures.
+    writtenOffAmount:
+      resolution === 'cleared' && writtenOffAmount === 0
+        ? Math.max(
+            0,
+            toNumber(raw.totalPayable ?? raw['Total Payable']) -
+              toNumber(raw.amountReceived ?? raw['Paid'] ?? raw['Amount Received'])
+          )
+        : writtenOffAmount,
     remarks: toText(raw.remarks),
     patientIds: Array.isArray(raw.patientIds) ? raw.patientIds.map(String) : [],
     createdAt: toNumber(raw.createdAt, Date.now()),
@@ -269,6 +292,8 @@ export function parseCSVFiles(files: { name: string; text: string }[]): ImportRe
           totalPayable: cell(row, map, 'Total Payable'),
           amountReceived: cell(row, map, 'Paid') || cell(row, map, 'Amount Received'),
           dueBalance: cell(row, map, 'Due / Balance') || cell(row, map, 'Due Balance'),
+          resolution: cell(row, map, 'Resolution'),
+          writtenOffAmount: cell(row, map, 'Written Off'),
           remarks: cell(row, map, 'Remarks'),
         });
         if (settlement) parsed.push(settlement);

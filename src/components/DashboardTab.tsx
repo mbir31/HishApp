@@ -7,8 +7,10 @@ import {
   ChevronRight,
   BarChart3,
   Medal,
+  BadgeCheck,
 } from 'lucide-react';
 import { ClinicSettings, PatientEntry, Settlement, TabType } from '../types';
+import { settlementResolutionOf, writtenOffAmountOf } from '../utils/settlementResolution';
 import { displayDateKey, formatDateKey, todayDateKey, weekdayNameDateKey } from '../utils/dateUtils';
 
 interface DashboardTabProps {
@@ -43,9 +45,15 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
     const monthGrossRevenue = monthEntries.reduce((sum, e) => sum + e.receivedAmount, 0);
     const monthPatientCount = monthEntries.length;
 
-    // Latest settlement for carry-forward balance
+    // Latest settlement for carry-forward balance. A batch confirmed as
+    // "Settlement Cleared with no due" leaves dueBalance = 0 behind, so it
+    // never reaches the outstanding due cards below.
     const latestSettlement = settlements.length > 0 ? settlements[0] : null;
     const previousCarryForwardDue = latestSettlement ? latestSettlement.dueBalance : 0;
+    const lastSettlementCleared = latestSettlement
+      ? settlementResolutionOf(latestSettlement) === 'cleared'
+      : false;
+    const lastSettlementWriteOff = latestSettlement ? writtenOffAmountOf(latestSettlement) : 0;
 
     // Pending entries (all time un-settled)
     const pendingEntries = entries.filter((e) => e.settlementStatus === 'Pending');
@@ -95,6 +103,8 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
       monthGrossRevenue,
       monthPatientCount,
       previousCarryForwardDue,
+      lastSettlementCleared,
+      lastSettlementWriteOff,
       pendingProceduresShare,
       totalUnsettledDue,
       pendingCount: pendingEntries.length,
@@ -252,6 +262,18 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
               </strong>
               . This combines unsettled clinical visits and previous carry-over debt.
             </p>
+            {metrics.lastSettlementCleared && (
+              <p className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-emerald-700 bg-emerald-50/80 border border-emerald-100 rounded-xl px-2.5 py-1.5 mt-1">
+                <BadgeCheck className="w-3 h-3 shrink-0" />
+                <span>
+                  {metrics.lastSettlementWriteOff > 0
+                    ? `Last batch cleared with no due — ${currency} ${formatNumber(
+                        metrics.lastSettlementWriteOff
+                      )} waived by mutual agreement on a round figure.`
+                    : 'Last batch cleared with no due.'}
+                </span>
+              </p>
+            )}
           </div>
 
           <div className="ios-glass-subtle flex items-center gap-3 px-4 py-3 rounded-2xl shrink-0">

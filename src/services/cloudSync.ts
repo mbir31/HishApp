@@ -77,6 +77,20 @@ export function normalizeRemoteRecord<T extends object>(kind: SyncKind, value: T
       row.totalPayable = asNumber(row.totalPayable);
       row.amountReceived = asNumber(row.amountReceived);
       row.dueBalance = asNumber(row.dueBalance);
+      // Confirmation ticked when the batch was closed. A row written by an
+      // older build carries neither field and keeps neither, so a legacy batch
+      // re-syncs with exactly the shape it was stored with (no invented
+      // defaults, no needless re-upload after a conflict tie).
+      if (row.resolution === 'due' || row.resolution === 'cleared') {
+        row.resolution = row.resolution;
+      } else {
+        delete row.resolution;
+      }
+      if (row.writtenOffAmount === undefined || row.writtenOffAmount === null) {
+        delete row.writtenOffAmount;
+      } else {
+        row.writtenOffAmount = asNumber(row.writtenOffAmount);
+      }
       row.remarks = asText(row.remarks);
       row.patientIds = asArray<string>(row.patientIds).map((id) => asText(id));
       row.createdAt = asNumber(row.createdAt);

@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { ClinicSettings, PatientEntry, Settlement } from '../types';
 import { parseDateKey } from '../utils/dateUtils';
+import { writtenOffAmountOf } from '../utils/settlementResolution';
 
 export interface MonthlySummaryData {
   monthStr: string; // YYYY-MM
@@ -17,6 +18,8 @@ export interface MonthlySummaryData {
   amountReceivedByClinic: number;
   previousDue: number;
   outstandingBalance: number;
+  /** Total forgiven on round-figure batches confirmed as "cleared with no due". */
+  totalWrittenOff: number;
   procedureBreakdown: { name: string; count: number; gross: number; doctorShare: number }[];
 }
 
@@ -47,6 +50,9 @@ export function generateMonthlySummaryData(
   const patientCount = monthEntries.length;
 
   const amountReceivedByClinic = monthSettlements.reduce((sum, s) => sum + s.amountReceived, 0);
+  // Round-figure batches closed as "Settlement Cleared with no due" never carry
+  // a balance; the waived difference is reported separately instead.
+  const totalWrittenOff = monthSettlements.reduce((sum, s) => sum + writtenOffAmountOf(s), 0);
 
   // Procedure breakdown
   const procMap = new Map<string, { count: number; gross: number; doctorShare: number }>();
@@ -93,6 +99,7 @@ export function generateMonthlySummaryData(
     amountReceivedByClinic,
     previousDue: allTimePreviousDue,
     outstandingBalance,
+    totalWrittenOff,
     procedureBreakdown,
   };
 }
@@ -127,6 +134,7 @@ export function generateRangeSummaryData(
   const patientCount = monthEntries.length;
 
   const amountReceivedByClinic = monthSettlements.reduce((sum, s) => sum + s.amountReceived, 0);
+  const totalWrittenOff = monthSettlements.reduce((sum, s) => sum + writtenOffAmountOf(s), 0);
 
   // Procedure breakdown
   const procMap = new Map<string, { count: number; gross: number; doctorShare: number }>();
@@ -173,6 +181,7 @@ export function generateRangeSummaryData(
     amountReceivedByClinic,
     previousDue: allTimePreviousDue,
     outstandingBalance,
+    totalWrittenOff,
     procedureBreakdown,
   };
 }
@@ -279,7 +288,7 @@ function buildSummaryPDF(
   // Summary Ledger Details Box
   doc.setFillColor(248, 250, 252);
   doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(36, currentY, pageWidth - 72, 42, 6, 6, 'FD');
+  doc.roundedRect(36, currentY, pageWidth - 72, 58, 6, 6, 'FD');
 
   doc.setFontSize(8.5);
   doc.setFont('helvetica', 'normal');
@@ -288,9 +297,11 @@ function buildSummaryPDF(
   const colW = (pageWidth - 72) / 3;
   doc.text(`Total Period Billing: ${fmt(data.totalGross)}`, 48, currentY + 16);
   doc.text(`Clinic Share (${clinicPercent}%): ${fmt(data.totalClinicShare)}`, 48, currentY + 30);
+  doc.text(`Doctor's Share (${sharePercent}%): ${fmt(data.totalDoctorShare)}`, 48, currentY + 44);
 
   doc.text(`Clinic Payouts Cleared: ${fmt(data.amountReceivedByClinic)}`, 48 + colW, currentY + 16);
   doc.text(`Previous Due Carried In: ${fmt(data.previousDue)}`, 48 + colW, currentY + 30);
+  doc.text(`Written Off (Mutual, No Due): ${fmt(data.totalWrittenOff)}`, 48 + colW, currentY + 44);
 
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(180, 83, 9);
@@ -298,8 +309,13 @@ function buildSummaryPDF(
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(71, 85, 105);
   doc.text(`Settlement Batches: ${data.settlements.length}`, 48 + colW * 2, currentY + 30);
+  doc.text(
+    data.totalWrittenOff > 0 ? 'Round-figure batches: cleared with no due' : 'No round-figure waivers',
+    48 + colW * 2,
+    currentY + 44
+  );
 
-  currentY += 58;
+  currentY += 74;
 
   // Section 2: Procedure Breakdown Table
   doc.setFont('helvetica', 'bold');
