@@ -46,8 +46,8 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
     const monthPatientCount = monthEntries.length;
 
     // Latest settlement for carry-forward balance. A batch confirmed as
-    // "Settlement Cleared with no due" leaves dueBalance = 0 behind, so it
-    // never reaches the outstanding due cards below.
+    // "Settlement cleared with no amount due" leaves dueBalance = 0 behind, so
+    // it never reaches the outstanding due cards below.
     const latestSettlement = settlements.length > 0 ? settlements[0] : null;
     const previousCarryForwardDue = latestSettlement ? latestSettlement.dueBalance : 0;
     const lastSettlementCleared = latestSettlement
@@ -267,10 +267,10 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                 <BadgeCheck className="w-3 h-3 shrink-0" />
                 <span>
                   {metrics.lastSettlementWriteOff > 0
-                    ? `Last batch cleared with no due — ${currency} ${formatNumber(
+                    ? `Last batch cleared with no amount due — ${currency} ${formatNumber(
                         metrics.lastSettlementWriteOff
                       )} waived by mutual agreement on a round figure.`
-                    : 'Last batch cleared with no due.'}
+                    : 'Last batch cleared with no amount due.'}
                 </span>
               </p>
             )}

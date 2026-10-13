@@ -22,6 +22,7 @@ import { deleteSettlement, executeSettlement } from '../db/indexedDB';
 import {
   computeSettlementOutcome,
   isSettlementWithDue,
+  settlementOutcomeText,
   writtenOffAmountOf,
 } from '../utils/settlementResolution';
 import { exportSettlementAsImage } from '../utils/settlementImageExport';
@@ -101,12 +102,16 @@ export const SettlementTab: React.FC<SettlementTabProps> = ({
   const totalClaimable = periodShare + previousDue;
   const parsedReceived = Math.max(0, parseFloat(amountReceived) || 0);
   const dueBalancePreview = Math.round((totalClaimable - parsedReceived) * 100) / 100;
+  /** True only once a payment figure has actually been typed in. */
+  const amountEntered = amountReceived.trim() !== '';
 
   /**
    * The clinic paid a round figure that does not match the claimable amount,
    * so the doctor has to tick a confirmation before the batch can be closed.
+   * Never true before an amount is entered — an empty field is simply an
+   * unfinished form, not a round-figure agreement.
    */
-  const amountMismatch = Math.abs(dueBalancePreview) > 0.004;
+  const amountMismatch = amountEntered && Math.abs(dueBalancePreview) > 0.004;
   const shortfallPreview = Math.max(0, dueBalancePreview); // unpaid, still claimable
   const advancePreview = Math.max(0, -dueBalancePreview); // clinic paid extra
   const dueOptionPreview = computeSettlementOutcome({
@@ -177,6 +182,15 @@ export const SettlementTab: React.FC<SettlementTabProps> = ({
       return;
     }
 
+    if (!amountEntered) {
+      showToast(
+        'Amount Required',
+        'Enter the amount received from the clinic to confirm this settlement.',
+        'warning'
+      );
+      return;
+    }
+
     // A round-figure payment can never be closed silently: the doctor has to
     // state whether the difference carries forward or the batch stands cleared.
     if (amountMismatch && resolution === null) {
@@ -213,7 +227,7 @@ export const SettlementTab: React.FC<SettlementTabProps> = ({
       showToast(
         `Settlement ${newSettlement.settlementId} Confirmed!`,
         writtenOff > 0
-          ? `Settled ${newSettlement.patientCount} patients. Cleared with no due — ${currency} ${formatNumber(
+          ? `Settled ${newSettlement.patientCount} patients. Cleared with no amount due — ${currency} ${formatNumber(
               writtenOff
             )} waived by mutual agreement on a round figure.`
           : `Settled ${newSettlement.patientCount} patients. Carried forward balance: ${currency} ${formatNumber(
@@ -270,6 +284,7 @@ export const SettlementTab: React.FC<SettlementTabProps> = ({
 • *Total Payable:* ${currency} ${formatNumber(s.totalPayable)}
 • *Amount Paid by Clinic:* ${currency} ${formatNumber(s.amountReceived)}
 • *Due Carried Forward:* ${currency} ${formatNumber(s.dueBalance)}
+• *Confirmation:* ${settlementOutcomeText(s, currency, formatNumber)}
 ${s.remarks ? `• *Notes:* ${s.remarks}\n` : ''}----------------------------------------
 _Generated electronically by HishApp (hishapp1.web.app)_`;
 
@@ -549,8 +564,10 @@ _Generated electronically by HishApp (hishapp1.web.app)_`;
                 <span className="text-[10px] font-extrabold uppercase tracking-wider opacity-80">
                   {isClearedChoice
                     ? clearedOptionPreview.writtenOffAmount > 0
-                      ? 'Cleared with No Due (Difference Waived)'
-                      : 'Cleared with No Due'
+                      ? 'Cleared with No Amount Due (Difference Waived)'
+                      : 'Cleared with No Amount Due'
+                    : !amountEntered
+                    ? 'Balance Awaiting Payment Entry'
                     : amountMismatch && resolution === null
                     ? 'Difference Awaiting Confirmation'
                     : dueBalancePreview > 0
@@ -571,6 +588,10 @@ _Generated electronically by HishApp (hishapp1.web.app)_`;
                 {isClearedChoice ? (
                   <span className="px-2 py-0.5 rounded-full bg-emerald-200/80 font-bold text-emerald-800">
                     No Due
+                  </span>
+                ) : !amountEntered ? (
+                  <span className="px-2 py-0.5 rounded-full bg-slate-200/80 font-bold text-slate-600">
+                    Enter Amount
                   </span>
                 ) : amountMismatch && resolution === null ? (
                   <span className="px-2 py-0.5 rounded-full bg-amber-200/80 font-bold text-amber-800">
@@ -643,7 +664,7 @@ _Generated electronically by HishApp (hishapp1.web.app)_`;
                     <span className="flex items-center gap-1.5 flex-wrap">
                       <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                       <span className="text-xs font-bold text-slate-900">
-                        Settlement done with due amount
+                        Settlement completed with an amount due:
                       </span>
                       <span className="text-xs font-black text-amber-700">
                         {currency} {formatNumber(shortfallPreview)}
@@ -679,7 +700,7 @@ _Generated electronically by HishApp (hishapp1.web.app)_`;
                   <span className="flex-1 min-w-0">
                     <span className="flex items-center gap-1.5 flex-wrap">
                       <BadgeCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      <span className="text-xs font-bold text-slate-900">Settlement Cleared with no due</span>
+                      <span className="text-xs font-bold text-slate-900">Settlement cleared with no amount due</span>
                       {clearedOptionPreview.writtenOffAmount > 0 && (
                         <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
                           {currency} {formatNumber(clearedOptionPreview.writtenOffAmount)} waived
@@ -731,7 +752,7 @@ _Generated electronically by HishApp (hishapp1.web.app)_`;
               <BadgeCheck className="w-3.5 h-3.5 shrink-0 mt-0.5" />
               <span>
                 Amount received matches the total claimable exactly — this batch will be confirmed as{' '}
-                <strong>Settlement Cleared with no due</strong>.
+                <strong>Settlement cleared with no amount due</strong>.
               </span>
             </div>
           ) : null}
@@ -762,9 +783,9 @@ _Generated electronically by HishApp (hishapp1.web.app)_`;
           <p className="text-[11px] font-semibold text-amber-700 bg-amber-50/80 border border-amber-200 rounded-2xl px-3.5 py-2.5 flex items-start gap-2">
             <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
             <span>
-              Tick <strong>Settlement done with due amount {currency}{' '}
-              {formatNumber(shortfallPreview)}</strong> or <strong>Settlement Cleared with no due</strong> above
-              to confirm this round-figure settlement.
+              Tick <strong>Settlement completed with an amount due: {currency}{' '}
+              {formatNumber(shortfallPreview)}</strong> or <strong>Settlement cleared with no amount due</strong> above
+              to confirm this settlement.
             </span>
           </p>
         )}
@@ -773,6 +794,7 @@ _Generated electronically by HishApp (hishapp1.web.app)_`;
           type="submit"
           disabled={
             isSubmitting ||
+            !amountEntered ||
             (eligibleEntriesInRange.length === 0 && previousDue === 0) ||
             requiresResolution
           }
@@ -783,7 +805,7 @@ _Generated electronically by HishApp (hishapp1.web.app)_`;
             {isSubmitting
               ? 'Finalizing Batch...'
               : isClearedChoice && amountMismatch
-              ? 'Confirm — Cleared with No Due'
+              ? 'Confirm — Cleared with No Amount Due'
               : 'Confirm Settlement'}
           </span>
         </button>
@@ -897,7 +919,7 @@ _Generated electronically by HishApp (hishapp1.web.app)_`;
                     <p className="text-[10px] font-semibold text-amber-700 bg-amber-50/80 border border-amber-100 p-1.5 rounded-lg flex items-center gap-1.5">
                       <AlertTriangle className="w-3 h-3 shrink-0" />
                       <span>
-                        Settlement done with due amount {currency} {formatNumber(s.dueBalance)} — carried
+                        Settlement completed with an amount due {currency} {formatNumber(s.dueBalance)} — carried
                         forward
                       </span>
                     </p>
@@ -905,7 +927,7 @@ _Generated electronically by HishApp (hishapp1.web.app)_`;
                     <p className="text-[10px] font-semibold text-emerald-700 bg-emerald-50/80 border border-emerald-100 p-1.5 rounded-lg flex items-center gap-1.5">
                       <BadgeCheck className="w-3 h-3 shrink-0" />
                       <span>
-                        Settlement Cleared with no due
+                        Settlement cleared with no amount due
                         {writtenOffAmountOf(s) > 0
                           ? ` — ${currency} ${formatNumber(writtenOffAmountOf(s))} waived by mutual agreement`
                           : ''}

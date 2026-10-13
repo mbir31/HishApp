@@ -235,8 +235,8 @@ _Generated electronically by HishApp (hishapp1.web.app)_`;
             <div>
               <p className="leading-tight">
                 {hasDue
-                  ? `Settlement done with due amount ${currency} ${formatNumber(settlement.dueBalance)}`
-                  : 'Settlement Cleared with no due'}
+                  ? `Settlement completed with an amount due ${currency} ${formatNumber(settlement.dueBalance)}`
+                  : 'Settlement cleared with no amount due'}
               </p>
               {!hasDue && writtenOff > 0 && (
                 <p className="text-[10px] font-medium text-emerald-700 mt-0.5">

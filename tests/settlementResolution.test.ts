@@ -144,7 +144,7 @@ test('the outcome line states the due, the waiver or the cleared account', () =>
 
   assert.equal(
     settlementOutcomeText(settlementFixture({ resolution: 'due' }), '৳', fmt),
-    'Settlement done with due amount ৳ 300'
+    'Settlement completed with an amount due ৳ 300'
   );
   assert.equal(
     settlementOutcomeText(
@@ -152,7 +152,7 @@ test('the outcome line states the due, the waiver or the cleared account', () =>
       '৳',
       fmt
     ),
-    'Settlement cleared with no due (৳ 300 written off by mutual agreement)'
+    'Settlement cleared with no amount due (৳ 300 written off by mutual agreement)'
   );
   assert.equal(
     settlementOutcomeText(
@@ -160,7 +160,7 @@ test('the outcome line states the due, the waiver or the cleared account', () =>
       '৳',
       fmt
     ),
-    'Settlement cleared with no due'
+    'Settlement cleared with no amount due'
   );
 });
 
@@ -291,7 +291,7 @@ test('a cleared statement prints the waiver and certifies no outstanding due', (
   assert.match(statement.statement, /the account stands fully cleared with no outstanding due/);
   assert.ok(
     statement.meta.some(
-      (field) => field.label === 'Settlement Confirmation' && field.value.includes('Cleared with no due')
+      (field) => field.label === 'Settlement Confirmation' && field.value.includes('Cleared with no amount due')
     )
   );
 

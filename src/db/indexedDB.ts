@@ -1190,9 +1190,9 @@ export async function executeSettlement(params: {
       enqueueInTx(tx, 'settlement', settlementId);
 
       const waiverNote = outcome.writtenOffAmount > 0
-        ? `, Written off by mutual agreement: ৳${outcome.writtenOffAmount} (cleared with no due)`
+        ? `, Written off by mutual agreement: ৳${outcome.writtenOffAmount} (cleared with no amount due)`
         : outcome.resolution === 'cleared'
-          ? ', Cleared with no due'
+          ? ', Cleared with no amount due'
           : '';
 
       const audit = makeAudit({
