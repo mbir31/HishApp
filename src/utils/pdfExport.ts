@@ -18,7 +18,7 @@ export interface MonthlySummaryData {
   amountReceivedByClinic: number;
   previousDue: number;
   outstandingBalance: number;
-  /** Total forgiven on round-figure batches confirmed as "cleared with no due". */
+  /** Total forgiven on round-figure batches confirmed as "cleared with no amount due". */
   totalWrittenOff: number;
   procedureBreakdown: { name: string; count: number; gross: number; doctorShare: number }[];
 }
@@ -50,8 +50,8 @@ export function generateMonthlySummaryData(
   const patientCount = monthEntries.length;
 
   const amountReceivedByClinic = monthSettlements.reduce((sum, s) => sum + s.amountReceived, 0);
-  // Round-figure batches closed as "Settlement Cleared with no due" never carry
-  // a balance; the waived difference is reported separately instead.
+  // Round-figure batches closed as "Settlement cleared with no amount due" never
+  // carry a balance; the waived difference is reported separately instead.
   const totalWrittenOff = monthSettlements.reduce((sum, s) => sum + writtenOffAmountOf(s), 0);
 
   // Procedure breakdown
@@ -310,7 +310,7 @@ function buildSummaryPDF(
   doc.setTextColor(71, 85, 105);
   doc.text(`Settlement Batches: ${data.settlements.length}`, 48 + colW * 2, currentY + 30);
   doc.text(
-    data.totalWrittenOff > 0 ? 'Round-figure batches: cleared with no due' : 'No round-figure waivers',
+    data.totalWrittenOff > 0 ? 'Round-figure batches: cleared with no amount due' : 'No round-figure waivers',
     48 + colW * 2,
     currentY + 44
   );

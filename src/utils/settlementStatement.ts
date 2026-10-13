@@ -188,10 +188,10 @@ export function buildSettlementStatement(
   if (clearedWithWriteOff) {
     meta.push({
       label: 'Settlement Confirmation',
-      value: `Cleared with no due · ${fmt(writtenOff)} waived`,
+      value: `Cleared with no amount due · ${fmt(writtenOff)} waived`,
     });
   } else if (cleared) {
-    meta.push({ label: 'Settlement Confirmation', value: 'Cleared with no due' });
+    meta.push({ label: 'Settlement Confirmation', value: 'Cleared with no amount due' });
   } else if (dueBalance > 0) {
     meta.push({ label: 'Settlement Confirmation', value: `Due carried forward · ${fmt(dueBalance)}` });
   }

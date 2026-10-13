@@ -6,11 +6,11 @@
  * amount received may not match the claimable amount exactly. In that case the
  * doctor MUST record how the difference was closed:
  *
- *   • 'due'     — "Settlement done with due amount …": the shortfall is carried
- *                 forward and stays visible in the dashboard due cards;
- *   • 'cleared' — "Settlement Cleared with no due": both sides agreed to close
- *                 the batch on a round figure, the shortfall is written off and
- *                 the dashboard shows no due or overdue for this batch.
+ *   • 'due'     — "Settlement completed with an amount due …": the shortfall is
+ *                 carried forward and stays visible in the dashboard due cards;
+ *   • 'cleared' — "Settlement cleared with no amount due": both sides agreed to
+ *                 close the batch on a round figure, the shortfall is written
+ *                 off and the dashboard shows no due or overdue for this batch.
  *
  * Everything here is pure and free of DOM / IndexedDB access so the arithmetic
  * and the wording can be unit-tested in Node.
@@ -26,7 +26,7 @@ const round2 = (value: number): number => {
 export interface SettlementOutcome {
   /** Resolution actually stored on the batch. */
   resolution: SettlementResolution;
-  /** Balance carried forward — 0 when the batch is cleared with no due. */
+  /** Balance carried forward — 0 when the batch is cleared with no amount due. */
   dueBalance: number;
   /** Amount forgiven by mutual agreement (0 unless a cleared batch underpaid). */
   writtenOffAmount: number;
@@ -99,9 +99,9 @@ export function isSettlementClearedWithWriteOff(settlement: Settlement): boolean
  * One-line, plain-language outcome used by receipts, WhatsApp shares, CSV/PDF
  * statements and audit logs. `format` renders a number (thousands grouping).
  *
- *   • due            → "Settlement done with due amount ৳ 300"
- *   • cleared waiver → "Settlement cleared with no due (৳ 300 written off by mutual agreement)"
- *   • cleared exact  → "Settlement cleared with no due"
+ *   • due            → "Settlement completed with an amount due ৳ 300"
+ *   • cleared waiver → "Settlement cleared with no amount due (৳ 300 written off by mutual agreement)"
+ *   • cleared exact  → "Settlement cleared with no amount due"
  *   • advance credit → "Settlement carried forward with advance credit ৳ 200"
  */
 export function settlementOutcomeText(
@@ -114,14 +114,14 @@ export function settlementOutcomeText(
   const due = round2(settlement.dueBalance || 0);
 
   if (resolution === 'due' && due > 0) {
-    return `Settlement done with due amount ${money(due)}`;
+    return `Settlement completed with an amount due ${money(due)}`;
   }
   if (resolution === 'due' && due < 0) {
     return `Settlement carried forward with advance credit ${money(due)}`;
   }
   const waived = writtenOffAmountOf(settlement);
   if (waived > 0) {
-    return `Settlement cleared with no due (${money(waived)} written off by mutual agreement)`;
+    return `Settlement cleared with no amount due (${money(waived)} written off by mutual agreement)`;
   }
-  return 'Settlement cleared with no due';
+  return 'Settlement cleared with no amount due';
 }
