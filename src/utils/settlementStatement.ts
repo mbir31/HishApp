@@ -8,6 +8,7 @@
  */
 import { ClinicSettings, Settlement } from '../types';
 import { displayDateKey, weekdayNameDateKey } from './dateUtils';
+import { settlementResolutionOf, writtenOffAmountOf } from './settlementResolution';
 
 export type StatementEmphasis = 'normal' | 'highlight' | 'total' | 'due';
 
@@ -95,6 +96,14 @@ export function buildSettlementStatement(
     typeof settlement.dueBalance === 'number' ? settlement.dueBalance : totalPayable - amountReceived;
   const patientCount = settlement.patientCount || 0;
 
+  // A batch may have been closed on a round figure by mutual agreement (the
+  // shortfall written off, nothing carried forward). The statement must show
+  // that waiver so the printed receipt matches the ledger.
+  const resolution = settlementResolutionOf(settlement);
+  const writtenOff = writtenOffAmountOf(settlement);
+  const cleared = resolution === 'cleared';
+  const clearedWithWriteOff = cleared && writtenOff > 0;
+
   const rows: StatementRow[] = [
     {
       label: `Doctor's Professional Share (${sharePercent}%)`,
@@ -123,12 +132,27 @@ export function buildSettlementStatement(
     },
   ];
 
+  if (clearedWithWriteOff) {
+    rows.push({
+      label: 'Waived by Mutual Agreement (Round-Figure Settlement)',
+      value: fmt(writtenOff),
+      emphasis: 'normal',
+    });
+  }
+
   const settlementWording =
     dueBalance > 0
       ? `leaving a balance of ${fmt(dueBalance)}, which shall be carried forward to the next settlement cycle`
       : dueBalance < 0
       ? `with an advance of ${fmt(Math.abs(dueBalance))} paid by the clinic and adjustable in the next settlement cycle`
+      : clearedWithWriteOff
+      ? `and, on a round-figure understanding between the clinic and the undersigned, the difference of ` +
+        `${fmt(writtenOff)} has been waived by mutual agreement, so the account stands fully cleared with no outstanding due`
       : 'and the account stands fully cleared with no outstanding due';
+
+  const banglaClosing = clearedWithWriteOff
+    ? ` অবশিষ্ট ${fmt(writtenOff)} উভয় পক্ষের সম্মতিতে ছাড় (waive) করা হয়েছে এবং হিসাব সম্পূর্ণ পরিশোধিত।`
+    : '';
 
   const statement =
     `This is to certify that the above statement has been prepared for the professional ` +
@@ -144,7 +168,33 @@ export function buildSettlementStatement(
     `উপরের বিবরণীটি ${clinicName}-এ চিকিৎসাকালীন ${readableDate(settlement.periodFrom)} থেকে ` +
     `${readableDate(settlement.periodTo)} পর্যন্ত ${patientCount} জন রোগীর চিকিৎসার ভিত্তিতে প্রস্তুত করা হয়েছে। ` +
     `চুক্তি অনুযায়ী ${sharePercent}% হিস্যা অনুসারে ডাক্তারের প্রাপ্য ${fmt(totalPayable)}, যার মধ্যে ` +
-    `${fmt(amountReceived)} পরিশোধ করা হয়েছে। এই বিবরণী HishApp অ্যাপের লেজার থেকে স্বয়ংক্রিয়ভাবে তৈরি।`;
+    `${fmt(amountReceived)} পরিশোধ করা হয়েছে।${banglaClosing} এই বিবরণী HishApp অ্যাপের লেজার থেকে স্বয়ংক্রিয়ভাবে তৈরি।`;
+
+  const meta: StatementMetaField[] = [
+    { label: 'Clinic', value: clinicName },
+    { label: 'Settlement Reference', value: settlement.settlementId || '—' },
+    { label: 'Attending Surgeon', value: doctorName },
+    { label: 'Settlement Date', value: readableDate(settlement.settlementDate) },
+    {
+      label: 'Service Period',
+      value: `${readableDate(settlement.periodFrom)} — ${readableDate(settlement.periodTo)}`,
+    },
+    {
+      label: 'Patient Visits Settled',
+      value: `${patientCount} visit${patientCount === 1 ? '' : 's'}`,
+    },
+  ];
+
+  if (clearedWithWriteOff) {
+    meta.push({
+      label: 'Settlement Confirmation',
+      value: `Cleared with no due · ${fmt(writtenOff)} waived`,
+    });
+  } else if (cleared) {
+    meta.push({ label: 'Settlement Confirmation', value: 'Cleared with no due' });
+  } else if (dueBalance > 0) {
+    meta.push({ label: 'Settlement Confirmation', value: `Due carried forward · ${fmt(dueBalance)}` });
+  }
 
   return {
     documentTitle: 'CLINICAL SETTLEMENT STATEMENT',
@@ -157,20 +207,7 @@ export function buildSettlementStatement(
     periodFrom: settlement.periodFrom || '',
     periodTo: settlement.periodTo || '',
     patientCount,
-    meta: [
-      { label: 'Clinic', value: clinicName },
-      { label: 'Settlement Reference', value: settlement.settlementId || '—' },
-      { label: 'Attending Surgeon', value: doctorName },
-      { label: 'Settlement Date', value: readableDate(settlement.settlementDate) },
-      {
-        label: 'Service Period',
-        value: `${readableDate(settlement.periodFrom)} — ${readableDate(settlement.periodTo)}`,
-      },
-      {
-        label: 'Patient Visits Settled',
-        value: `${patientCount} visit${patientCount === 1 ? '' : 's'}`,
-      },
-    ],
+    meta,
     rows,
     statement,
     statementBangla: includeBangla ? statementBangla : '',

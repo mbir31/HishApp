@@ -75,8 +75,11 @@ It combines **“হিসাব” (Account & Calculation)** and **“হিস
 
 ### 💰 3. Carry-Forward Settlement Engine
 - **Batch Reconciliation:** Select any settlement window (This Week, Last 14 Days, This Month, or Custom range).
-- **Automated Due Carry-Forward:** If the clinic pays partial amounts, the remaining unpaid balance automatically carries forward to the next cycle. You never lose a single earned taka.
-- **Advance Payment Credit:** Clinic advances automatically reflect as adjustable credits in subsequent cycles.
+- **Mandatory Settlement Confirmation:** When the amount received from the clinic does not match the exact Total Claimable amount, the app will not close the batch until one of two options is ticked —
+  - **Settlement done with due amount ৳ `X`** → the difference is carried forward and keeps showing in the dashboard due cards until it is paid;
+  - **Settlement Cleared with no due** → the difference is closed by mutual agreement (round-figure payment), recorded as a written-off/waived amount and shows **no due or overdue** in the dashboard due cards, receipts or statements.
+- **Automated Due Carry-Forward:** If the clinic pays partial amounts and the due option is ticked, the remaining unpaid balance automatically carries forward to the next cycle. You never lose a single earned taka.
+- **Advance Payment Credit:** Clinic advances automatically reflect as adjustable credits in subsequent cycles — an advance is never written off, only a genuine shortfall can be waived.
 
 ### 💬 4. 1-Tap Direct WhatsApp Share
 - Instant **Direct WhatsApp Share** button on every settlement receipt and historical record.
@@ -131,7 +134,14 @@ Patient: Shuvo | RCT | Received: ৳3,000
 $$\text{Total Payable} = \text{Current Period Doctor Share} + \text{Previous Carry-over Due}$$
 $$\text{Next Carried Forward Due} = \text{Total Payable} - \text{Amount Paid by Clinic}$$
 
-If the clinic owner pays ৳10,000 against a total payable of ৳12,500, the remaining **৳2,500** is automatically recorded as an outstanding balance and added to the top of your next settlement batch.
+If the clinic owner pays ৳10,000 against a total payable of ৳12,500, you must tick how the difference is closed:
+
+| Ticked confirmation | Stored result |
+|---|---|
+| **Settlement done with due amount ৳2,500** | The **৳2,500** is recorded as an outstanding balance and added to the top of your next settlement batch. |
+| **Settlement Cleared with no due** | A round figure was mutually agreed, so the **৳2,500** is recorded as waived (written off) and **no due or overdue** appears in the dashboard due cards, receipts or statements. |
+
+Example (round-figure agreement): Total claimable **৳4,300**, clinic hands over **৳4,000** → ticking *Settlement Cleared with no due* closes the batch with a recorded waiver of **৳300** and leaves a zero balance to carry forward.
 
 ---
 
@@ -190,6 +200,7 @@ Dental surgeons frequently ask:
 | **Share & Calculations**| Configurable Doctor % | Default 40% (customizable to 30%, 50%, or any custom rate) |
 | | Live Calculations | Real-time calculation of Doctor Share & Clinic Retention |
 | | Unpaid Dues Carry-Over | Unpaid clinic dues auto-transfer to subsequent cycles |
+| | Round-Figure Settlement Guard | Two-option confirmation (due amount vs. cleared with no due) whenever payment ≠ claimable |
 | | Advance Settlement Credits | Clinic prepayments deduct smoothly from future batches |
 | **Sharing & Reports** | 1-Tap Direct WhatsApp Share | Share formatted settlement & monthly breakdowns via WhatsApp |
 | | Certified High-Res JPG | Export certified visual receipts with EN+BN certification text (Canvas 2x) |

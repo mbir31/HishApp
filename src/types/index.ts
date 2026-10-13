@@ -13,6 +13,19 @@ export interface PatientEntry {
   updatedAt: number;
 }
 
+/**
+ * How the difference between the total claimable amount and the amount the
+ * clinic actually paid was closed when the batch was confirmed:
+ *
+ *   • 'due'     — the unpaid difference is carried forward as a due amount
+ *                 and appears again in the next settlement cycle;
+ *   • 'cleared' — the clinic and the doctor mutually agreed to settle the
+ *                 batch (typically on a round figure), so the difference is
+ *                 written off and the batch leaves NO due or overdue behind
+ *                 in the dashboard due cards.
+ */
+export type SettlementResolution = 'due' | 'cleared';
+
 export interface Settlement {
   settlementId: string; // e.g., ST-YYYYMMDD-01
   settlementDate: string; // YYYY-MM-DD
@@ -24,6 +37,18 @@ export interface Settlement {
   totalPayable: number; // periodShare + previousDue
   amountReceived: number; // Actual payment paid by clinic
   dueBalance: number; // totalPayable - amountReceived (carries forward)
+  /**
+   * Confirmation the doctor ticked for this batch. Optional only so batches
+   * recorded by older builds (which had no such choice) keep loading — an
+   * absent value is read as 'due' whenever a balance was carried forward.
+   */
+  resolution?: SettlementResolution;
+  /**
+   * Amount waived by mutual agreement when the batch was confirmed as
+   * `cleared` while the clinic had paid less than the total claimable amount.
+   * Always 0 for batches settled with a due amount.
+   */
+  writtenOffAmount?: number;
   remarks: string;
   patientIds: string[]; // List of entry IDs settled in this batch
   createdAt: number;

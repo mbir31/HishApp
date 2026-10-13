@@ -16,13 +16,26 @@
  * never be saved locally without being queued for sync, even if the tab
  * closes or the device goes offline a millisecond later.
  */
-import { AmountPreset, AuditLogEntry, ClinicSettings, PatientEntry, PatientProfile, Settlement } from '../types';
+import {
+  AmountPreset,
+  AuditLogEntry,
+  ClinicSettings,
+  PatientEntry,
+  PatientProfile,
+  Settlement,
+  SettlementResolution,
+} from '../types';
 import {
   FOLLOW_UP_AMOUNT_PRESET,
   FOLLOW_UP_PROCEDURE,
   withFollowUpAmountPreset,
   withFollowUpProcedure,
 } from '../utils/followUp';
+import {
+  computeSettlementOutcome,
+  settlementResolutionOf,
+  writtenOffAmountOf,
+} from '../utils/settlementResolution';
 import { isLegacyDemoEntry, isLegacyDemoProfile, isLegacyDemoSettlement } from './legacyDemoData';
 import {
   isSyncLedgerDataEmpty,
@@ -1031,13 +1044,16 @@ export interface SettlementCalculation {
   periodShare: number; // 40% sum of eligible entries
   previousDue: number; // carry forward balance from prior settlement
   totalPayable: number; // periodShare + previousDue
-  remainingDuePreview: number; // totalPayable - amountReceived
+  remainingDuePreview: number; // balance preview for the ticked resolution
+  /** Amount that would be waived if the batch is confirmed as cleared. */
+  writtenOffPreview: number;
 }
 
 export async function calculateSettlementSummary(
   periodFrom: string,
   periodTo: string,
-  amountReceived: number
+  amountReceived: number,
+  resolution: SettlementResolution = 'due'
 ): Promise<SettlementCalculation> {
   const allEntries = await getAllPatientEntries();
   const latestSettlement = await getLatestSettlement();
@@ -1050,7 +1066,7 @@ export async function calculateSettlementSummary(
   const periodShare = eligibleEntries.reduce((sum, e) => sum + e.doctorShare, 0);
   const previousDue = latestSettlement ? latestSettlement.dueBalance : 0;
   const totalPayable = periodShare + previousDue;
-  const remainingDuePreview = totalPayable - amountReceived;
+  const outcome = computeSettlementOutcome({ totalClaimable: totalPayable, amountReceived, resolution });
 
   return {
     eligibleEntries,
@@ -1058,7 +1074,8 @@ export async function calculateSettlementSummary(
     periodShare,
     previousDue,
     totalPayable,
-    remainingDuePreview,
+    remainingDuePreview: outcome.dueBalance,
+    writtenOffPreview: outcome.writtenOffAmount,
   };
 }
 
@@ -1066,12 +1083,19 @@ export async function calculateSettlementSummary(
  * Batch-settle every pending visit in the period. Visits, the new settlement
  * and the audit event are written in one transaction; the batch ID is derived
  * from the day's existing batches.
+ *
+ * `resolution` records the confirmation the doctor ticked when the clinic paid
+ * a different amount than the total claimable amount:
+ *   • 'due'     (default, historic behaviour) — the shortfall carries forward;
+ *   • 'cleared' — a round-figure mutual agreement: the shortfall is written off
+ *                 and no due or overdue is left behind for this batch.
  */
 export async function executeSettlement(params: {
   periodFrom: string;
   periodTo: string;
   amountReceived: number;
   remarks: string;
+  resolution?: SettlementResolution;
 }): Promise<Settlement> {
   const db = await dbForOwner(await currentLedgerOwner());
   const tx = db.transaction(['patient_entries', 'settlements', 'audit_logs', OUTBOX_STORE], 'readwrite');
@@ -1125,7 +1149,14 @@ export async function executeSettlement(params: {
 
       const periodShare = eligible.reduce((acc, curr) => acc + curr.doctorShare, 0);
       const totalPayable = periodShare + previousDue;
-      const dueBalance = totalPayable - params.amountReceived;
+      // The ticked confirmation decides whether the difference between the
+      // claimable amount and the payment carries forward or is waived.
+      const outcome = computeSettlementOutcome({
+        totalClaimable: totalPayable,
+        amountReceived: params.amountReceived,
+        resolution: params.resolution,
+      });
+      const dueBalance = outcome.dueBalance;
 
       for (const entry of eligible) {
         const settled: PatientEntry = {
@@ -1149,6 +1180,8 @@ export async function executeSettlement(params: {
         totalPayable,
         amountReceived: params.amountReceived,
         dueBalance,
+        resolution: outcome.resolution,
+        writtenOffAmount: outcome.writtenOffAmount,
         remarks: params.remarks,
         patientIds: eligible.map((e) => e.id),
         createdAt: Date.now(),
@@ -1156,11 +1189,17 @@ export async function executeSettlement(params: {
       settlementStore.put(newSettlement);
       enqueueInTx(tx, 'settlement', settlementId);
 
+      const waiverNote = outcome.writtenOffAmount > 0
+        ? `, Written off by mutual agreement: ৳${outcome.writtenOffAmount} (cleared with no due)`
+        : outcome.resolution === 'cleared'
+          ? ', Cleared with no due'
+          : '';
+
       const audit = makeAudit({
         action: 'SETTLEMENT_CREATED',
         targetId: settlementId,
         targetType: 'settlement',
-        details: `Reconciled batch ${settlementId} (${params.periodFrom} to ${params.periodTo}): ${eligible.length} visits. Claimable: ৳${totalPayable}, Paid: ৳${params.amountReceived}, Due: ৳${dueBalance}`,
+        details: `Reconciled batch ${settlementId} (${params.periodFrom} to ${params.periodTo}): ${eligible.length} visits. Claimable: ৳${totalPayable}, Paid: ৳${params.amountReceived}, Due: ৳${dueBalance}${waiverNote}`,
         newData: newSettlement,
       });
       auditStore.put(audit);
@@ -1519,6 +1558,8 @@ export async function exportAllDataCSV(): Promise<{ patientEntriesCSV: string; s
     'Total Payable',
     'Amount Received',
     'Due / Balance',
+    'Resolution',
+    'Written Off',
     'Remarks',
   ];
 
@@ -1530,6 +1571,8 @@ export async function exportAllDataCSV(): Promise<{ patientEntriesCSV: string; s
     s.totalPayable,
     s.amountReceived,
     s.dueBalance,
+    csvCell(settlementResolutionOf(s)),
+    writtenOffAmountOf(s),
     csvCell(s.remarks),
   ]);
 
