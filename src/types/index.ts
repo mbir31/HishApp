@@ -182,5 +182,5 @@ export interface ToastMessage {
   description?: string;
   type: 'success' | 'info' | 'warning' | 'error';
   action?: ToastAction;
-  duration?: number; // ms before auto-dismiss (default 4000)
+  duration?: number; // ms before auto-dismiss (default 1800)
 }

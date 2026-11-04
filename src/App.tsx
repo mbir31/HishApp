@@ -80,7 +80,7 @@ export default function App() {
 
       setTimeout(() => {
         setToasts((prev) => prev.filter((t) => t.id !== id));
-      }, options?.duration ?? 4000);
+      }, options?.duration ?? 1800);
     },
     []
   );
@@ -245,7 +245,7 @@ export default function App() {
       `Removed visit of ${deletedEntry.patientName} (${weekdayNameDateKey(deletedEntry.date)} ${displayDateKey(deletedEntry.date)})`,
       'info',
       {
-        duration: 10000,
+        duration: 5000,
         action: {
           label: 'Undo',
           onClick: () => {

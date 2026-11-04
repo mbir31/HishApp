@@ -98,3 +98,68 @@ export function describeDateKey(key: string | null | undefined): string {
     year: 'numeric',
   });
 }
+
+export interface UnsettledDateRange {
+  from: string;
+  to: string;
+  fromDisplay: string;
+  toDisplay: string;
+  label: string;
+}
+
+/**
+ * Computes the date range (`DD-MM-YYYY to DD-MM-YYYY`) covered by the current
+ * Total Unsettled Due (all pending visits plus any unbroken carry-forward
+ * settlement streak with a positive dueBalance).
+ */
+export function getUnsettledDateRange(
+  entries: ReadonlyArray<{ date: string; settlementStatus: string }>,
+  settlements: ReadonlyArray<{
+    periodFrom: string;
+    periodTo: string;
+    dueBalance: number;
+    settlementDate?: string;
+    createdAt?: number;
+  }> = []
+): UnsettledDateRange | null {
+  const dates: string[] = [];
+
+  for (const entry of entries) {
+    if (entry.settlementStatus === 'Pending' && parseDateKey(entry.date)) {
+      dates.push(entry.date.trim());
+    }
+  }
+
+  if (settlements.length > 0) {
+    const ordered = [...settlements].sort(
+      (a, b) =>
+        (b.settlementDate || '').localeCompare(a.settlementDate || '') ||
+        (b.createdAt || 0) - (a.createdAt || 0)
+    );
+    for (const s of ordered) {
+      if ((s.dueBalance ?? 0) > 0) {
+        if (parseDateKey(s.periodFrom)) dates.push(s.periodFrom.trim());
+        if (parseDateKey(s.periodTo)) dates.push(s.periodTo.trim());
+      } else {
+        break;
+      }
+    }
+  }
+
+  if (dates.length === 0) return null;
+
+  dates.sort();
+  const from = dates[0];
+  const to = dates[dates.length - 1];
+  const fromDisplay = displayDateKey(from);
+  const toDisplay = displayDateKey(to);
+
+  return {
+    from,
+    to,
+    fromDisplay,
+    toDisplay,
+    label: `${fromDisplay} to ${toDisplay}`,
+  };
+}
+

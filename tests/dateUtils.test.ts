@@ -4,6 +4,7 @@ import {
   describeDateKey,
   displayDateKey,
   formatDateKey,
+  getUnsettledDateRange,
   nextDateKey,
   parseDateKey,
   previousDateKey,
@@ -60,3 +61,33 @@ test('date selector display uses DD-MM-YYYY and full English weekday names', () 
   assert.equal(displayDateKey('2026-02-31'), '');
   assert.equal(weekdayNameDateKey('not-a-date'), '');
 });
+
+test('getUnsettledDateRange spans pending entries and unpaid carry-forward settlements', () => {
+  assert.equal(getUnsettledDateRange([], []), null);
+
+  const pendingOnly = getUnsettledDateRange(
+    [
+      { date: '2026-10-01', settlementStatus: 'Settled' },
+      { date: '2026-10-12', settlementStatus: 'Pending' },
+      { date: '2026-10-05', settlementStatus: 'Pending' },
+    ],
+    [{ periodFrom: '2026-10-01', periodTo: '2026-10-03', dueBalance: 0, settlementDate: '2026-10-03' }]
+  );
+  assert.deepEqual(pendingOnly, {
+    from: '2026-10-05',
+    to: '2026-10-12',
+    fromDisplay: '05-10-2026',
+    toDisplay: '12-10-2026',
+    label: '05-10-2026 to 12-10-2026',
+  });
+
+  const withCarryForward = getUnsettledDateRange(
+    [{ date: '2026-10-15', settlementStatus: 'Pending' }],
+    [
+      { periodFrom: '2026-10-04', periodTo: '2026-10-10', dueBalance: 800, settlementDate: '2026-10-10' },
+      { periodFrom: '2026-09-20', periodTo: '2026-10-03', dueBalance: 0, settlementDate: '2026-10-03' },
+    ]
+  );
+  assert.equal(withCarryForward?.label, '04-10-2026 to 15-10-2026');
+});
+
