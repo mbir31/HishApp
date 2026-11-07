@@ -1,0 +1,41 @@
+name: Temporary hosting failure diagnostic
+on:
+  push:
+    branches:
+      - arena/5bbde9a9-hishapp
+permissions:
+  actions: read
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract error messages from the prior job log
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/${{ github.repository }}/actions/jobs/128532657952/logs > "$RUNNER_TEMP/job.log"
+          python3 - <<'PY'
+          import re, json, os
+          lines = open(os.environ['RUNNER_TEMP'] + '/job.log', encoding='utf-8', errors='replace').readlines()
+          found = set()
+          for line in lines:
+              # Only display error summaries, not debug headers, credentials or request bodies.
+              if re.search(r'authorization|credential|private.?key|bearer|access.?token', line, re.I):
+                  continue
+              match = re.search(r'"error"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"', line)
+              if match:
+                  try: msg = json.loads('"' + match.group(1) + '"')
+                  except ValueError: continue
+              else:
+                  match = re.search(r'(?:HTTP Error:|Error:)\s*([^\r\n]+)', line)
+                  if not match: continue
+                  msg = match.group(0)
+              msg = re.sub(r'https?://\S+', '[url]', msg)
+              msg = re.sub(r'[\r\n%]', ' ', msg)[:400]
+              if msg not in found:
+                  print('::notice::' + msg)
+                  found.add(msg)
+          if not found:
+              print('::warning::No matching error summaries found in job log')
+          PY
