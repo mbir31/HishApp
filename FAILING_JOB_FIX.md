@@ -1,5 +1,27 @@
 # Firebase Deployment Workflow Fixes
 
+## November 7, 2026: Hosting API permission check
+
+The [deployment](https://github.com/mbir31/HishApp/actions/runs/42415532048)
+installed and built successfully and deployed Firestore rules, but Hosting failed
+with HTTP 403: permission denied to get service `firebasehosting.googleapis.com`.
+The Hosting action defaults to the latest Firebase CLI. Firebase CLI added an
+API-enabled check in [firebase-tools #11296](https://github.com/firebase/firebase-tools/pull/11296),
+which requires `serviceusage.services.get`; the existing deployment account does
+not have that permission.
+
+As an immediate workaround, pin the Hosting action to Firebase CLI 15.33.0,
+the version available at the last successful Hosting deployment, before that
+check was added. A [verification run](https://github.com/mbir31/HishApp/actions/runs/42415912203)
+successfully built and deployed the current application to the live site with
+that version. This pin should not be permanent: a project administrator can
+ensure the Hosting API is enabled and grant the deployment service account the
+least-privileged access needed to read service status (for example, Service Usage
+Viewer). Then test and update the pin to a current CLI version to receive fixes.
+Hosting deployment permissions remain necessary independently of Service Usage
+permissions. Do not change Firestore rules or grant API enablement permissions
+just to bypass this check.
+
 ## November 4, 2026: optional platform packages missing again
 
 The [deployment](https://github.com/mbir31/HishApp/actions/runs/41903279506)
