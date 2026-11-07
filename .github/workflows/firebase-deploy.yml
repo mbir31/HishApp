@@ -32,3 +32,6 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           channelId: live
           projectId: hishapp1
+          # Newer CLI releases require serviceusage.services.get for Hosting.
+          # Keep the last known-working version until that access is granted.
+          firebaseToolsVersion: 15.33.0
