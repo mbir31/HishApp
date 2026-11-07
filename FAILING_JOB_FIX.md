@@ -1,5 +1,18 @@
 # Firebase Deployment Workflow Fixes
 
+## November 4, 2026: optional platform packages missing again
+
+The [deployment](https://github.com/mbir31/HishApp/actions/runs/41903279506)
+failed during dependency installation. Its logs were unavailable in this environment,
+but running `npm ci` with Node 24 and npm 11 reproduced `EUSAGE`: the lockfile
+was missing optional native packages for other platforms. npm 10 did not catch
+this, so a successful install with an older npm is not sufficient validation.
+
+Restore the missing entries without changing locked versions by removing the local
+`node_modules` directory and running `npm install --package-lock-only` with Node
+24/npm 11. Then run `npm ci` with the same versions, followed by lint, tests, and
+build. The pull-request workflow runs these checks before a change reaches main.
+
 ## October 11, 2026: `npm ci` EUSAGE after lockfile pruning
 
 The [failed deployment](https://github.com/mbir31/HishApp/actions/runs/38156771694)
