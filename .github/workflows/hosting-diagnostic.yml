@@ -14,7 +14,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if ! gh api repos/${{ github.repository }}/actions/jobs/128532657952/logs > "$RUNNER_TEMP/job.log" 2> "$RUNNER_TEMP/diagnostic.err"; then
+          if ! gh api --allow-escape-sequences repos/${{ github.repository }}/actions/jobs/128532657952/logs > "$RUNNER_TEMP/job.log" 2> "$RUNNER_TEMP/diagnostic.err"; then
             echo "::error::$(head -c 400 "$RUNNER_TEMP/diagnostic.err")"
             exit 1
           fi
